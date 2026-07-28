@@ -1,0 +1,11 @@
+@import './base.css';
+
+#app {
+  font-weight: normal;
+}
+
+a {
+  transition:
+    border-color 0.16s ease,
+    color 0.16s ease;
+}
