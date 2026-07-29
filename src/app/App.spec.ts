@@ -85,9 +85,11 @@ async function generateSimpleDiff(wrapper: MountedApp) {
   await newTextarea.setValue('new')
   await wrapper.find('button.primary-action').trigger('click')
 
-  expect(wrapper.text()).toContain('合并差异视图')
+  expect(wrapper.text()).toContain('返回编辑')
 
-  return { oldTextarea, newTextarea }
+  await getButtonByText(wrapper, '返回编辑').trigger('click')
+
+  return getTextareas(wrapper)
 }
 
 describe('tool registry', () => {
@@ -156,9 +158,10 @@ describe('App', () => {
     await newTextarea.setValue('玄仲已经突破九十级。')
     await wrapper.find('button.primary-action').trigger('click')
 
-    expect(wrapper.text()).toContain(textCompareTool.name)
-    expect(wrapper.text()).toContain('已生成文本差异结果。')
-    expect(wrapper.text()).toContain('修改')
+  expect(wrapper.text()).toContain(textCompareTool.name)
+  expect(wrapper.text()).toContain('已生成文本差异结果。')
+  expect(wrapper.text()).not.toContain('合并差异视图')
+  expect(wrapper.text()).toContain('修改')
     expect(wrapper.text()).toContain('达到')
     expect(wrapper.text()).toContain('突破')
   })
@@ -182,12 +185,15 @@ describe('App', () => {
     await oldTextarea.setValue('old')
     await newTextarea.setValue('new')
     await wrapper.find('button.primary-action').trigger('click')
+    await getButtonByText(wrapper, '返回编辑').trigger('click')
     await getButtonByText(wrapper, '交换文本').trigger('click')
 
-    expect((oldTextarea.element as HTMLTextAreaElement).value).toBe('new')
-    expect((newTextarea.element as HTMLTextAreaElement).value).toBe('old')
+    const restoredInputs = getTextareas(wrapper)
+
+    expect((restoredInputs.oldTextarea.element as HTMLTextAreaElement).value).toBe('new')
+    expect((restoredInputs.newTextarea.element as HTMLTextAreaElement).value).toBe('old')
     expect(wrapper.text()).toContain('已交换旧文本和新文本。')
-    expect(wrapper.text()).not.toContain('合并差异视图')
+    expect(wrapper.text()).not.toContain('返回编辑')
   })
 
   it('clears text and result', async () => {
@@ -197,12 +203,15 @@ describe('App', () => {
     await oldTextarea.setValue('old')
     await newTextarea.setValue('new')
     await wrapper.find('button.primary-action').trigger('click')
+    await getButtonByText(wrapper, '返回编辑').trigger('click')
     await getButtonByText(wrapper, '清空').trigger('click')
 
-    expect((oldTextarea.element as HTMLTextAreaElement).value).toBe('')
-    expect((newTextarea.element as HTMLTextAreaElement).value).toBe('')
+    const restoredInputs = getTextareas(wrapper)
+
+    expect((restoredInputs.oldTextarea.element as HTMLTextAreaElement).value).toBe('')
+    expect((restoredInputs.newTextarea.element as HTMLTextAreaElement).value).toBe('')
     expect(wrapper.text()).toContain('已清空输入和对比结果。')
-    expect(wrapper.text()).not.toContain('合并差异视图')
+    expect(wrapper.text()).not.toContain('返回编辑')
   })
 
   it('clears the old result after old text changes', async () => {
@@ -212,7 +221,7 @@ describe('App', () => {
     await oldTextarea.setValue('changed old text')
 
     expect(wrapper.text()).toContain('尚未进行对比。')
-    expect(wrapper.text()).not.toContain('合并差异视图')
+    expect(wrapper.text()).not.toContain('返回编辑')
   })
 
   it('clears the old result after new text changes', async () => {
@@ -222,7 +231,7 @@ describe('App', () => {
     await newTextarea.setValue('changed new text')
 
     expect(wrapper.text()).toContain('尚未进行对比。')
-    expect(wrapper.text()).not.toContain('合并差异视图')
+    expect(wrapper.text()).not.toContain('返回编辑')
   })
 
   it('clears the old result after ignore trailing whitespace changes', async () => {
@@ -233,7 +242,7 @@ describe('App', () => {
     await ignoreTrailingWhitespace.setValue(false)
 
     expect(wrapper.text()).toContain('尚未进行对比。')
-    expect(wrapper.text()).not.toContain('合并差异视图')
+    expect(wrapper.text()).not.toContain('返回编辑')
   })
 
   it('clears the old result after ignore blank lines changes', async () => {
@@ -244,7 +253,7 @@ describe('App', () => {
     await ignoreBlankLines.setValue(true)
 
     expect(wrapper.text()).toContain('尚未进行对比。')
-    expect(wrapper.text()).not.toContain('合并差异视图')
+    expect(wrapper.text()).not.toContain('返回编辑')
   })
 
   it('does not rerun comparison automatically after input changes', async () => {
@@ -256,7 +265,7 @@ describe('App', () => {
 
     expect(wrapper.text()).toContain('尚未进行对比。')
     expect(wrapper.text()).not.toContain('文本内容相同，当前没有差异。')
-    expect(wrapper.text()).not.toContain('合并差异视图')
+    expect(wrapper.text()).not.toContain('返回编辑')
 
     await wrapper.find('button.primary-action').trigger('click')
 
