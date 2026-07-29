@@ -23,7 +23,15 @@ interface CharacterMatch {
   newIndex: number
 }
 
+interface ModifiedMatch extends Match {
+  oldLineCount: number
+  newLineCount: number
+}
+
 export const MODIFIED_LINE_SIMILARITY_THRESHOLD = 0.45
+const LONG_TEXT_SIMILARITY_LENGTH = 40
+const STRONG_EDGE_MINIMUM_LENGTH = 20
+const STRONG_EDGE_MINIMUM_SHORTER_TEXT_RATIO = 0.3
 
 const defaultOptions: TextDiffOptions = {
   ignoreTrailingWhitespace: true,
@@ -73,6 +81,11 @@ export function calculateLineSimilarity(oldText: string, newText: string): numbe
 
   const lcsLength = findCharacterMatches(oldCharacters, newCharacters).length
   const lcsSimilarity = (2 * lcsLength) / (oldCharacters.length + newCharacters.length)
+
+  if (Math.max(oldCharacters.length, newCharacters.length) > LONG_TEXT_SIMILARITY_LENGTH) {
+    return lcsSimilarity
+  }
+
   const edgeSimilarity =
     Math.max(
       countCommonPrefix(oldCharacters, newCharacters),
@@ -202,43 +215,147 @@ function buildDiffLines(oldLines: ComparableLine[], newLines: ComparableLine[], 
 
 function buildChangedBlock(oldBlock: ComparableLine[], newBlock: ComparableLine[]): DiffLine[] {
   const lines: DiffLine[] = []
-  const pairedCount = Math.min(oldBlock.length, newBlock.length)
+  const matches = findModifiedMatches(oldBlock, newBlock)
+  let oldCursor = 0
+  let newCursor = 0
 
-  for (let index = 0; index < pairedCount; index += 1) {
-    const oldLine = oldBlock[index]!
-    const newLine = newBlock[index]!
-
-    if (shouldPairAsModified(oldLine.text, newLine.text)) {
-      const characterDiff = diffCharacters(oldLine.text, newLine.text)
-
-      lines.push({
-        type: 'modified',
-        oldLineNumber: oldLine.lineNumber,
-        newLineNumber: newLine.lineNumber,
-        oldText: oldLine.text,
-        newText: newLine.text,
-        oldSegments: characterDiff.oldSegments,
-        newSegments: characterDiff.newSegments,
-      })
-    } else {
-      lines.push(createRemovedLine(oldLine))
-      lines.push(createAddedLine(newLine))
-    }
+  for (const match of matches) {
+    lines.push(...oldBlock.slice(oldCursor, match.oldIndex).map(createRemovedLine))
+    lines.push(...newBlock.slice(newCursor, match.newIndex).map(createAddedLine))
+    lines.push(
+      createModifiedLine(
+        oldBlock.slice(match.oldIndex, match.oldIndex + match.oldLineCount),
+        newBlock.slice(match.newIndex, match.newIndex + match.newLineCount),
+      ),
+    )
+    oldCursor = match.oldIndex + match.oldLineCount
+    newCursor = match.newIndex + match.newLineCount
   }
 
-  for (const oldLine of oldBlock.slice(pairedCount)) {
-    lines.push(createRemovedLine(oldLine))
-  }
-
-  for (const newLine of newBlock.slice(pairedCount)) {
-    lines.push(createAddedLine(newLine))
-  }
+  lines.push(...oldBlock.slice(oldCursor).map(createRemovedLine))
+  lines.push(...newBlock.slice(newCursor).map(createAddedLine))
 
   return lines
 }
 
-function shouldPairAsModified(oldText: string, newText: string): boolean {
-  return calculateLineSimilarity(oldText, newText) >= MODIFIED_LINE_SIMILARITY_THRESHOLD
+function findModifiedMatches(oldBlock: ComparableLine[], newBlock: ComparableLine[]): ModifiedMatch[] {
+  const scores = createLengthMatrix(oldBlock.length, newBlock.length)
+
+  for (let oldIndex = oldBlock.length - 1; oldIndex >= 0; oldIndex -= 1) {
+    for (let newIndex = newBlock.length - 1; newIndex >= 0; newIndex -= 1) {
+      const candidateScores = findModifiedCandidates(oldBlock, newBlock, oldIndex, newIndex).map(
+        (candidate) =>
+          candidate.score + scores[oldIndex + candidate.oldLineCount]![newIndex + candidate.newLineCount]!,
+      )
+
+      scores[oldIndex]![newIndex] = Math.max(
+        scores[oldIndex + 1]![newIndex]!,
+        scores[oldIndex]![newIndex + 1]!,
+        ...candidateScores,
+      )
+    }
+  }
+
+  const matches: ModifiedMatch[] = []
+  let oldIndex = 0
+  let newIndex = 0
+
+  while (oldIndex < oldBlock.length && newIndex < newBlock.length) {
+    const candidates = findModifiedCandidates(oldBlock, newBlock, oldIndex, newIndex)
+    const candidate = candidates.find(
+      (item) =>
+        item.score + scores[oldIndex + item.oldLineCount]![newIndex + item.newLineCount]! ===
+        scores[oldIndex]![newIndex],
+    )
+
+    if (candidate) {
+      matches.push(candidate)
+      oldIndex += candidate.oldLineCount
+      newIndex += candidate.newLineCount
+    } else if (scores[oldIndex + 1]![newIndex]! >= scores[oldIndex]![newIndex + 1]!) {
+      oldIndex += 1
+    } else {
+      newIndex += 1
+    }
+  }
+
+  return matches
+}
+
+function findModifiedCandidates(
+  oldBlock: ComparableLine[],
+  newBlock: ComparableLine[],
+  oldIndex: number,
+  newIndex: number,
+): Array<ModifiedMatch & { similarity: number; score: number }> {
+  const candidates: Array<ModifiedMatch & { similarity: number; score: number }> = []
+
+  for (const [oldLineCount, newLineCount] of [[1, 1], [1, 2], [1, 3], [2, 1], [3, 1]] as const) {
+    const oldLines = oldBlock.slice(oldIndex, oldIndex + oldLineCount)
+    const newLines = newBlock.slice(newIndex, newIndex + newLineCount)
+
+    if (oldLines.length !== oldLineCount || newLines.length !== newLineCount) {
+      continue
+    }
+
+    const oldText = joinLineTexts(oldLines)
+    const newText = joinLineTexts(newLines)
+    const similarity = calculateLineSimilarity(oldText, newText)
+
+    if (
+      similarity >= MODIFIED_LINE_SIMILARITY_THRESHOLD ||
+      (oldLineCount === 1 && newLineCount === 1 && hasStrongCommonEdge(oldText, newText))
+    ) {
+      candidates.push({
+        oldIndex,
+        newIndex,
+        oldLineCount,
+        newLineCount,
+        similarity,
+        score: similarity * Math.min(countCharacters(oldText), countCharacters(newText)),
+      })
+    }
+  }
+
+  return candidates.sort((left, right) => right.similarity - left.similarity)
+}
+
+function createModifiedLine(oldLines: ComparableLine[], newLines: ComparableLine[]): DiffLine {
+  const oldText = joinLineTexts(oldLines)
+  const newText = joinLineTexts(newLines)
+  const characterDiff = diffCharacters(oldText, newText)
+
+  return {
+    type: 'modified',
+    oldLineNumber: oldLines[0]!.lineNumber,
+    newLineNumber: newLines[0]!.lineNumber,
+    oldLineNumbers: oldLines.map((line) => line.lineNumber),
+    newLineNumbers: newLines.map((line) => line.lineNumber),
+    oldText,
+    newText,
+    oldTexts: oldLines.map((line) => line.text),
+    newTexts: newLines.map((line) => line.text),
+    oldSegments: characterDiff.oldSegments,
+    newSegments: characterDiff.newSegments,
+  }
+}
+
+function joinLineTexts(lines: ComparableLine[]): string {
+  return lines.map((line) => line.text).join('\n')
+}
+
+function hasStrongCommonEdge(oldText: string, newText: string): boolean {
+  const oldCharacters = splitCharacters(oldText)
+  const newCharacters = splitCharacters(newText)
+  const commonEdgeLength = Math.max(
+    countCommonPrefix(oldCharacters, newCharacters),
+    countCommonSuffix(oldCharacters, newCharacters),
+  )
+
+  return (
+    commonEdgeLength >= STRONG_EDGE_MINIMUM_LENGTH &&
+    commonEdgeLength / Math.min(oldCharacters.length, newCharacters.length) >= STRONG_EDGE_MINIMUM_SHORTER_TEXT_RATIO
+  )
 }
 
 function createRemovedLine(oldLine: ComparableLine): DiffLine {
