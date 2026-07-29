@@ -11,8 +11,12 @@ export interface DiffLine {
   type: DiffLineType
   oldLineNumber?: number
   newLineNumber?: number
+  oldLineNumbers?: number[]
+  newLineNumbers?: number[]
   oldText?: string
   newText?: string
+  oldTexts?: string[]
+  newTexts?: string[]
   oldSegments?: DiffSegment[]
   newSegments?: DiffSegment[]
 }
