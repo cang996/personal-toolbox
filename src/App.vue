@@ -5,9 +5,9 @@ import { RouterLink, RouterView } from 'vue-router'
 <template>
   <div class="app-shell">
     <header class="app-header">
-      <RouterLink class="app-title" to="/">Personal Toolbox</RouterLink>
-      <nav aria-label="Primary navigation">
-        <RouterLink class="home-link" to="/">Home</RouterLink>
+      <RouterLink class="app-title" to="/">个人工具箱</RouterLink>
+      <nav aria-label="主导航">
+        <RouterLink class="home-link" to="/">首页</RouterLink>
       </nav>
     </header>
 
@@ -26,20 +26,21 @@ import { RouterLink, RouterView } from 'vue-router'
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
-  border-bottom: 1px solid var(--color-border);
-  padding: 1rem max(1rem, calc((100vw - var(--page-max-width)) / 2));
+  gap: var(--space-4);
+  border-bottom: 1px solid var(--color-border-subtle);
+  background: var(--color-surface-elevated);
+  padding: var(--space-4) max(var(--space-4), calc((100vw - var(--content-max-width)) / 2));
 }
 
 .app-title {
-  color: var(--color-heading);
+  color: var(--color-text-primary);
   font-size: 1rem;
   font-weight: 700;
   text-decoration: none;
 }
 
 .home-link {
-  color: var(--color-link);
+  color: var(--color-accent);
   font-weight: 600;
   text-decoration: none;
 }
@@ -51,7 +52,7 @@ import { RouterLink, RouterView } from 'vue-router'
 
 .app-main {
   margin: 0 auto;
-  max-width: var(--page-max-width);
-  padding: 2rem 1rem 3rem;
+  max-width: var(--content-max-width);
+  padding: var(--space-6) var(--space-4) 3rem;
 }
 </style>

@@ -1,0 +1,37 @@
+:root {
+  --color-page-background: #f5f5f7;
+  --color-surface: #ffffff;
+  --color-surface-elevated: rgb(255 255 255 / 0.92);
+  --color-text-primary: #1d1d1f;
+  --color-text-secondary: #515154;
+  --color-text-muted: #6e6e73;
+  --color-border-subtle: #d2d2d7;
+  --color-accent: #0071e3;
+  --color-accent-hover: #0077ed;
+  --color-accent-active: #006edb;
+  --color-focus-ring: #0071e3;
+  --color-success: #008a20;
+  --color-danger: #b42318;
+  --color-warning: #9a6700;
+  --color-warning-surface: #fff6d9;
+  --color-diff-added: #146c2e;
+  --color-diff-added-surface: #e7f7eb;
+  --color-diff-removed: #a51d2d;
+  --color-diff-removed-surface: #fdebec;
+  --color-diff-modified-surface: #fff8e6;
+  --radius-small: 6px;
+  --radius-control: 10px;
+  --radius-card: 14px;
+  --shadow-small: 0 1px 2px rgb(0 0 0 / 0.06);
+  --shadow-card: 0 8px 24px rgb(0 0 0 / 0.08);
+  --shadow-floating: 0 8px 20px rgb(0 0 0 / 0.14);
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --content-max-width: 1040px;
+  --control-height: 2.5rem;
+  --transition-fast: 160ms;
+}
