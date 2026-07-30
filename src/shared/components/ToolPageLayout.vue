@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import { RouterLink } from 'vue-router'
-
 defineProps<{
   title: string
   description: string
@@ -9,8 +7,6 @@ defineProps<{
 
 <template>
   <section class="tool-page">
-    <RouterLink class="back-link" to="/">Back to Home</RouterLink>
-
     <header class="tool-header">
       <h1>{{ title }}</h1>
       <p>{{ description }}</p>
@@ -25,27 +21,16 @@ defineProps<{
 <style scoped>
 .tool-page {
   display: grid;
-  gap: 1.5rem;
-}
-
-.back-link {
-  color: var(--color-link);
-  font-weight: 600;
-  text-decoration: none;
-}
-
-.back-link:hover,
-.back-link:focus-visible {
-  text-decoration: underline;
+  gap: var(--space-5);
 }
 
 .tool-header {
   display: grid;
-  gap: 0.5rem;
+  gap: var(--space-2);
 }
 
 h1 {
-  color: var(--color-heading);
+  color: var(--color-text-primary);
   font-size: clamp(1.75rem, 4vw, 2.5rem);
   font-weight: 700;
   line-height: 1.15;
@@ -53,13 +38,14 @@ h1 {
 
 p {
   max-width: 42rem;
-  color: var(--color-muted);
+  color: var(--color-text-secondary);
 }
 
 .tool-content {
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-card);
   background: var(--color-surface);
+  box-shadow: var(--shadow-small);
   padding: 1.25rem;
 }
 </style>

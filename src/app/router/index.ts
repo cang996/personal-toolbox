@@ -1,6 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
-import { exampleTool, textCompareTool } from '../tools'
+import { textCompareTool } from '../tools'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -9,11 +9,6 @@ const router = createRouter({
       path: '/',
       name: 'home',
       component: () => import('../views/HomeView.vue'),
-    },
-    {
-      path: exampleTool.path,
-      name: `tool-${exampleTool.id}`,
-      component: () => import('@/tools/example/ExampleToolView.vue'),
     },
     {
       path: textCompareTool.path,
