@@ -5,9 +5,9 @@ import { RouterLink } from 'vue-router'
 <template>
   <section class="not-found">
     <p class="status-code">404</p>
-    <h1>Page Not Found</h1>
-    <p>The page you requested does not exist in this toolbox.</p>
-    <RouterLink class="home-link" to="/">Back to Home</RouterLink>
+    <h1>页面未找到</h1>
+    <p>你访问的页面不存在。</p>
+    <RouterLink class="home-link" to="/">返回首页</RouterLink>
   </section>
 </template>
 
@@ -19,7 +19,7 @@ import { RouterLink } from 'vue-router'
 }
 
 .status-code {
-  color: var(--color-link);
+  color: var(--color-accent);
   font-size: 0.875rem;
   font-weight: 700;
   letter-spacing: 0;
@@ -27,19 +27,19 @@ import { RouterLink } from 'vue-router'
 }
 
 h1 {
-  color: var(--color-heading);
+  color: var(--color-text-primary);
   font-size: clamp(1.75rem, 4vw, 2.5rem);
   font-weight: 700;
   line-height: 1.15;
 }
 
 p {
-  color: var(--color-muted);
+  color: var(--color-text-secondary);
 }
 
 .home-link {
   width: fit-content;
-  color: var(--color-link);
+  color: var(--color-accent);
   font-weight: 600;
   text-decoration: none;
 }
