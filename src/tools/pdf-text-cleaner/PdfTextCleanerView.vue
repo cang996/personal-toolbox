@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 
-import { pdfTextCleanerTool } from '@/app/tools'
 import ToolPageLayout from '@/shared/components/ToolPageLayout.vue'
 
 import { cleanPdfText } from './pdfTextCleaner'
@@ -13,6 +12,8 @@ const removeCjkLatinSpaces = ref(true)
 const result = ref('')
 const state = ref<CleanerState>('idle')
 const statusMessage = ref('粘贴文本后点击“开始清理”。')
+const title = 'PDF 复制文本清理'
+const description = '清理从 PDF 复制后产生的异常换行、字符间距和列表结构。'
 
 const hasResult = computed(() => result.value.length > 0)
 
@@ -66,7 +67,7 @@ function invalidateResult() {
 </script>
 
 <template>
-  <ToolPageLayout :title="pdfTextCleanerTool.name" :description="pdfTextCleanerTool.description">
+  <ToolPageLayout :title="title" :description="description">
     <div class="pdf-text-cleaner">
       <div class="content-grid">
         <section class="text-panel">
