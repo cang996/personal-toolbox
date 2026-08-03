@@ -3,7 +3,7 @@ import { mount } from '@vue/test-utils'
 import { createRouter, createWebHistory } from 'vue-router'
 
 import App from '../App.vue'
-import { textCompareTool, tools } from './tools'
+import { textCleanerTool, textCompareTool, tools } from './tools'
 
 type MountedApp = Awaited<ReturnType<typeof mountAt>>
 
@@ -18,6 +18,14 @@ function createTestRouter() {
       {
         path: textCompareTool.path,
         component: () => import('@/tools/text-compare/TextCompareView.vue'),
+      },
+      {
+        path: textCleanerTool.path,
+        component: () => import('@/tools/text-cleaner/TextCleanerHomeView.vue'),
+      },
+      {
+        path: '/tools/text-cleaner/pdf',
+        component: () => import('@/tools/pdf-text-cleaner/PdfTextCleanerView.vue'),
       },
       {
         path: '/:pathMatch(.*)*',
@@ -93,6 +101,11 @@ describe('tool registry', () => {
     expect(tools).toContain(textCompareTool)
   })
 
+  it('uses the exported text cleaner entry in the tools array instead of a standalone PDF tool', () => {
+    expect(tools).toContain(textCleanerTool)
+    expect(tools.some((tool) => tool.name === 'PDF 文本清理')).toBe(false)
+  })
+
   it('contains valid unique ids and tool paths', () => {
     const ids = tools.map((tool) => tool.id)
     const uniqueIds = new Set(ids)
@@ -117,6 +130,37 @@ describe('App', () => {
     expect(wrapper.text()).toContain(textCompareTool.name)
     expect(wrapper.text()).toContain(textCompareTool.description)
     expect(wrapper.find(`a[href="${textCompareTool.path}"]`).exists()).toBe(true)
+  })
+
+  it('renders the text cleaner entry on the home page', async () => {
+    const home = await mountAt('/')
+
+    expect(home.text()).toContain(textCleanerTool.name)
+    expect(home.text()).toContain(textCleanerTool.description)
+    expect(home.find(`a[href="${textCleanerTool.path}"]`).exists()).toBe(true)
+    expect(home.text()).not.toContain('PDF 文本清理')
+  })
+
+  it('renders the text cleaner entry page and its PDF route', async () => {
+    const entry = await mountAt(textCleanerTool.path)
+
+    expect(entry.text()).toContain('PDF 复制文本清理')
+    expect(entry.text()).toContain('Markdown 格式清理')
+    expect(entry.text()).toContain('即将推出')
+    expect(entry.find('a[href="/tools/text-cleaner/pdf"]').exists()).toBe(true)
+    expect(entry.find('.cleaner-card-unavailable a').exists()).toBe(false)
+
+    const tool = await mountAt('/tools/text-cleaner/pdf')
+    expect(tool.text()).toContain('PDF 复制文本清理')
+    expect(tool.find('#pdf-source-text').exists()).toBe(true)
+  })
+
+  it('does not register legacy or Markdown cleaner routes', async () => {
+    const legacy = await mountAt('/tools/pdf-text-cleaner')
+    expect(legacy.text()).toContain('页面未找到')
+
+    const markdown = await mountAt('/tools/text-cleaner/markdown')
+    expect(markdown.text()).toContain('页面未找到')
   })
 
   it('renders text compare route and generates a diff result', async () => {

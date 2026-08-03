@@ -14,7 +14,15 @@ export const textCompareTool: ToolDefinition = {
   path: '/tools/text-compare',
 }
 
-export const tools: ToolDefinition[] = [textCompareTool]
+export const textCleanerTool: ToolDefinition = {
+  id: 'text-cleaner',
+  name: '文本清理',
+  description: '清理 PDF 复制文本，并逐步支持更多文本格式。',
+  category: '文本处理',
+  path: '/tools/text-cleaner',
+}
+
+export const tools: ToolDefinition[] = [textCompareTool, textCleanerTool]
 
 export function findToolById(id: string): ToolDefinition | undefined {
   return tools.find((tool) => tool.id === id)
