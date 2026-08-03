@@ -1,6 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
-import { textCompareTool } from '../tools'
+import { pdfTextCleanerTool, textCompareTool } from '../tools'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -14,6 +14,11 @@ const router = createRouter({
       path: textCompareTool.path,
       name: `tool-${textCompareTool.id}`,
       component: () => import('@/tools/text-compare/TextCompareView.vue'),
+    },
+    {
+      path: pdfTextCleanerTool.path,
+      name: `tool-${pdfTextCleanerTool.id}`,
+      component: () => import('@/tools/pdf-text-cleaner/PdfTextCleanerView.vue'),
     },
     {
       path: '/:pathMatch(.*)*',

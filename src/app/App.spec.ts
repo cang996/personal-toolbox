@@ -3,7 +3,7 @@ import { mount } from '@vue/test-utils'
 import { createRouter, createWebHistory } from 'vue-router'
 
 import App from '../App.vue'
-import { textCompareTool, tools } from './tools'
+import { pdfTextCleanerTool, textCompareTool, tools } from './tools'
 
 type MountedApp = Awaited<ReturnType<typeof mountAt>>
 
@@ -18,6 +18,10 @@ function createTestRouter() {
       {
         path: textCompareTool.path,
         component: () => import('@/tools/text-compare/TextCompareView.vue'),
+      },
+      {
+        path: pdfTextCleanerTool.path,
+        component: () => import('@/tools/pdf-text-cleaner/PdfTextCleanerView.vue'),
       },
       {
         path: '/:pathMatch(.*)*',
@@ -117,6 +121,18 @@ describe('App', () => {
     expect(wrapper.text()).toContain(textCompareTool.name)
     expect(wrapper.text()).toContain(textCompareTool.description)
     expect(wrapper.find(`a[href="${textCompareTool.path}"]`).exists()).toBe(true)
+  })
+
+  it('renders the PDF text cleaner tool on the home page and its route', async () => {
+    const home = await mountAt('/')
+
+    expect(home.text()).toContain(pdfTextCleanerTool.name)
+    expect(home.text()).toContain(pdfTextCleanerTool.description)
+    expect(home.find(`a[href="${pdfTextCleanerTool.path}"]`).exists()).toBe(true)
+
+    const tool = await mountAt(pdfTextCleanerTool.path)
+    expect(tool.text()).toContain(pdfTextCleanerTool.name)
+    expect(tool.find('#pdf-source-text').exists()).toBe(true)
   })
 
   it('renders text compare route and generates a diff result', async () => {
