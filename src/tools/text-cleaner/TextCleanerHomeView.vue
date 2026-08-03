@@ -4,6 +4,7 @@ import { RouterLink } from 'vue-router'
 import ToolPageLayout from '@/shared/components/ToolPageLayout.vue'
 
 const pdfCleanerPath = '/tools/text-cleaner/pdf'
+const markdownCleanerPath = '/tools/text-cleaner/markdown'
 </script>
 
 <template>
@@ -17,13 +18,13 @@ const pdfCleanerPath = '/tools/text-cleaner/pdf'
         <p>清理从 PDF 复制后产生的异常换行、字符间距和列表结构。</p>
       </RouterLink>
 
-      <article class="cleaner-card cleaner-card-unavailable" aria-label="Markdown 格式清理，即将推出">
+      <RouterLink class="cleaner-card cleaner-card-available" :to="markdownCleanerPath">
         <div class="card-heading">
           <h2>Markdown 格式清理</h2>
-          <span class="status status-unavailable">即将推出</span>
+          <span class="status status-available">可用</span>
         </div>
         <p>删除常见 Markdown 标记，保留适合复制到 Word 的文本结构。</p>
-      </article>
+      </RouterLink>
     </div>
   </ToolPageLayout>
 </template>
@@ -58,10 +59,6 @@ const pdfCleanerPath = '/tools/text-cleaner/pdf'
   box-shadow: var(--shadow-card);
 }
 
-.cleaner-card-unavailable {
-  background: color-mix(in srgb, var(--color-page-background) 55%, var(--color-surface));
-}
-
 .card-heading {
   display: flex;
   flex-wrap: wrap;
@@ -91,11 +88,6 @@ p {
 .status-available {
   background: color-mix(in srgb, var(--color-success) 12%, var(--color-surface));
   color: var(--color-success);
-}
-
-.status-unavailable {
-  background: var(--color-warning-surface);
-  color: var(--color-warning);
 }
 
 @media (max-width: 680px) {
