@@ -26,6 +26,11 @@ const router = createRouter({
       component: () => import('@/tools/pdf-text-cleaner/PdfTextCleanerView.vue'),
     },
     {
+      path: '/tools/text-cleaner/markdown',
+      name: 'tool-text-cleaner-markdown',
+      component: () => import('@/tools/markdown-text-cleaner/MarkdownTextCleanerView.vue'),
+    },
+    {
       path: '/:pathMatch(.*)*',
       name: 'not-found',
       component: () => import('../views/NotFoundView.vue'),

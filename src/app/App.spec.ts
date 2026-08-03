@@ -28,6 +28,10 @@ function createTestRouter() {
         component: () => import('@/tools/pdf-text-cleaner/PdfTextCleanerView.vue'),
       },
       {
+        path: '/tools/text-cleaner/markdown',
+        component: () => import('@/tools/markdown-text-cleaner/MarkdownTextCleanerView.vue'),
+      },
+      {
         path: '/:pathMatch(.*)*',
         component: () => import('./views/NotFoundView.vue'),
       },
@@ -146,21 +150,25 @@ describe('App', () => {
 
     expect(entry.text()).toContain('PDF 复制文本清理')
     expect(entry.text()).toContain('Markdown 格式清理')
-    expect(entry.text()).toContain('即将推出')
+    expect(entry.text()).toContain('可用')
     expect(entry.find('a[href="/tools/text-cleaner/pdf"]').exists()).toBe(true)
-    expect(entry.find('.cleaner-card-unavailable a').exists()).toBe(false)
+    expect(entry.find('a[href="/tools/text-cleaner/markdown"]').exists()).toBe(true)
 
     const tool = await mountAt('/tools/text-cleaner/pdf')
     expect(tool.text()).toContain('PDF 复制文本清理')
     expect(tool.find('#pdf-source-text').exists()).toBe(true)
   })
 
-  it('does not register legacy or Markdown cleaner routes', async () => {
+  it('does not register the legacy PDF cleaner route', async () => {
     const legacy = await mountAt('/tools/pdf-text-cleaner')
     expect(legacy.text()).toContain('页面未找到')
+  })
 
+  it('renders the Markdown cleaner route', async () => {
     const markdown = await mountAt('/tools/text-cleaner/markdown')
-    expect(markdown.text()).toContain('页面未找到')
+
+    expect(markdown.text()).toContain('Markdown 格式清理')
+    expect(markdown.find('#markdown-source-text').exists()).toBe(true)
   })
 
   it('renders text compare route and generates a diff result', async () => {
