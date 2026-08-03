@@ -7,7 +7,10 @@ import TextCleanerHomeView from './TextCleanerHomeView.vue'
 function mountView() {
   const router = createRouter({
     history: createWebHistory(),
-    routes: [{ path: '/tools/text-cleaner/pdf', component: { template: '<div>PDF page</div>' } }],
+    routes: [
+      { path: '/tools/text-cleaner/pdf', component: { template: '<div>PDF page</div>' } },
+      { path: '/tools/text-cleaner/markdown', component: { template: '<div>Markdown page</div>' } },
+    ],
   })
 
   return mount(TextCleanerHomeView, { global: { plugins: [router] } })
@@ -21,12 +24,10 @@ describe('TextCleanerHomeView', () => {
     expect(wrapper.find('a[href="/tools/text-cleaner/pdf"]').exists()).toBe(true)
   })
 
-  it('shows the unavailable Markdown cleaner without a link', () => {
+  it('shows the Markdown cleaner linked to its route', () => {
     const wrapper = mountView()
-    const unavailableCard = wrapper.find('.cleaner-card-unavailable')
 
-    expect(unavailableCard.text()).toContain('Markdown 格式清理')
-    expect(unavailableCard.text()).toContain('即将推出')
-    expect(unavailableCard.find('a').exists()).toBe(false)
+    expect(wrapper.text()).toContain('Markdown 格式清理')
+    expect(wrapper.find('a[href="/tools/text-cleaner/markdown"]').exists()).toBe(true)
   })
 })
