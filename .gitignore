@@ -42,3 +42,10 @@ __screenshots__/
 
 # Vite
 *.timestamp-*-*.mjs
+
+# Python backend spike
+backend/.venv/
+**pycache**/
+.pytest_cache/
+*.pyc
+backend/spikes/*_response.html
