@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from backend.app.services.banks.boc import parse_boc_rates
+from backend.app.exchange_rate.banks.boc import parse_boc_rates
 
 
 FIXTURE_PATH = Path(__file__).parent / "fixtures" / "boc_rates.html"
