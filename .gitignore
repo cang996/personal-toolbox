@@ -51,3 +51,4 @@ backend/.venv/
 backend/spikes/exchange_rate/*_response.html
 backend/spikes/exchange_rate/*_response.js
 backend/spikes/exchange_rate/*_response.json
+backend/spikes/exchange_rate/*_response.xml
