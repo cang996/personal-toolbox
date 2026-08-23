@@ -48,4 +48,6 @@ backend/.venv/
 **pycache**/
 .pytest_cache/
 *.pyc
-backend/spikes/*_response.html
+backend/spikes/exchange_rate/*_response.html
+backend/spikes/exchange_rate/*_response.js
+backend/spikes/exchange_rate/*_response.json
