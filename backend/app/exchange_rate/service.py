@@ -1,10 +1,12 @@
 import logging
 from collections.abc import Callable, Sequence
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import Protocol
 
+from backend.app.exchange_rate.bank_cache import BankRateClient, BankSnapshotCache
 from backend.app.exchange_rate.currencybeacon import unavailable_market_reference
 from backend.app.exchange_rate.market_reference import MarketReferenceRate
 from backend.app.exchange_rate.models import BankExchangeRate, RateStatus
@@ -15,13 +17,6 @@ from backend.app.exchange_rate.policies import (
 
 
 LOGGER = logging.getLogger(__name__)
-
-
-class BankRateClient(Protocol):
-    bank_code: str
-    bank_name: str
-
-    def fetch_rates(self) -> list[BankExchangeRate]: ...
 
 
 class MarketRateProvider(Protocol):
@@ -58,10 +53,13 @@ class ExchangeRateService:
         stale_after: timedelta = BANK_QUOTE_STALE_AFTER,
         clock: Callable[[], datetime] | None = None,
     ) -> None:
+        self._clock = clock or (lambda: datetime.now(UTC))
         self._bank_clients = tuple(bank_clients)
+        self._bank_caches = tuple(
+            BankSnapshotCache(client, clock=self._clock) for client in self._bank_clients
+        )
         self._market_provider = market_provider
         self._stale_after = stale_after
-        self._clock = clock or (lambda: datetime.now(UTC))
 
     def get_comparison(self, currency_code: str) -> ExchangeRateComparison:
         normalized_code = currency_code.upper()
@@ -70,10 +68,7 @@ class ExchangeRateService:
 
         now = self._clock()
         _require_aware(now)
-        bank_results = tuple(
-            self._get_bank_quote(client, normalized_code, now)
-            for client in self._bank_clients
-        )
+        bank_results = self._get_bank_quotes(normalized_code, now)
         try:
             market_reference = self._market_provider.get_rate(normalized_code)
         except Exception:
@@ -89,16 +84,31 @@ class ExchangeRateService:
             banks=bank_results,
         )
 
+    def _get_bank_quotes(
+        self, currency_code: str, now: datetime
+    ) -> tuple[BankQuoteResult, ...]:
+        if not self._bank_caches:
+            return ()
+        with ThreadPoolExecutor(
+            max_workers=len(self._bank_caches),
+            thread_name_prefix="bank-snapshot",
+        ) as executor:
+            futures = [
+                executor.submit(self._get_bank_quote, cache, currency_code, now)
+                for cache in self._bank_caches
+            ]
+            return tuple(future.result() for future in futures)
+
     def _get_bank_quote(
-        self, client: BankRateClient, currency_code: str, now: datetime
+        self, cache: BankSnapshotCache, currency_code: str, now: datetime
     ) -> BankQuoteResult:
         try:
-            rates = client.fetch_rates()
+            rates = cache.get_snapshot().rates
             matching = next(
                 (rate for rate in rates if rate.currency_code == currency_code), None
             )
             if matching is None:
-                return _unavailable_bank_quote(client, currency_code)
+                return _unavailable_bank_quote(cache, currency_code)
             current = apply_freshness(
                 matching, now=now, stale_after=self._stale_after
             )
@@ -117,10 +127,10 @@ class ExchangeRateService:
         except Exception:
             LOGGER.exception(
                 "Bank rate retrieval failed for %s (%s)",
-                client.bank_code,
+                cache.bank_code,
                 currency_code,
             )
-            return _unavailable_bank_quote(client, currency_code)
+            return _unavailable_bank_quote(cache, currency_code)
 
 
 def apply_freshness(
@@ -146,7 +156,7 @@ def apply_freshness(
 
 
 def _unavailable_bank_quote(
-    client: BankRateClient, currency_code: str
+    client: BankRateClient | BankSnapshotCache, currency_code: str
 ) -> BankQuoteResult:
     return BankQuoteResult(
         bank_code=client.bank_code,

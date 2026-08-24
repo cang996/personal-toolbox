@@ -6,6 +6,7 @@ import pytest
 
 from backend.app.exchange_rate.currencybeacon import (
     CURRENCYBEACON_LATEST_URL,
+    MARKET_REFERENCE_CACHE_TTL,
     CurrencyBeaconCache,
     CurrencyBeaconClient,
     CurrencyBeaconConfigurationError,
@@ -102,3 +103,4 @@ def test_lazy_cache_hits_within_ttl_and_refreshes_at_expiry() -> None:
     assert client.calls == 2
     assert first == third
     assert second.currency_code == "CAD"
+    assert MARKET_REFERENCE_CACHE_TTL == timedelta(hours=1)
