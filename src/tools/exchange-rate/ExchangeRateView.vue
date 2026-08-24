@@ -48,10 +48,10 @@ async function loadRates() {
 
 function bankStatusLabel(status: RateStatus): string {
   return {
-    available: '当前可用',
+    available: '当前有报价',
     stale: '可能已过期',
     unavailable: '暂无当前报价',
-    unsupported: '暂不支持此币种',
+    unsupported: '该银行暂不支持此币种',
   }[status]
 }
 
@@ -149,7 +149,9 @@ onBeforeUnmount(() => activeRequest?.abort())
               <p class="eyebrow">BANK QUOTES</p>
               <h2 id="bank-heading">五家银行报价比较</h2>
             </div>
-            <p>买入 / 卖出均为银行视角，所有价格均为 1 单位外币对应的人民币价格。</p>
+            <p>
+              买入 / 卖出均为银行视角，所有价格均为 1 单位外币对应的人民币价格。页面展示银行公开报价，仅供比较参考；实际可办理币种及成交价格以银行渠道为准。
+            </p>
           </header>
 
           <div class="table-scroll" tabindex="0" aria-label="银行汇率横向比较表，可横向滚动">
