@@ -22,7 +22,15 @@ export const textCleanerTool: ToolDefinition = {
   path: '/tools/text-cleaner',
 }
 
-export const tools: ToolDefinition[] = [textCompareTool, textCleanerTool]
+export const exchangeRateTool: ToolDefinition = {
+  id: 'exchange-rate',
+  name: '汇率比较',
+  description: '查看市场参考汇率与五家银行的现汇、现钞买入和卖出报价。',
+  category: '金融工具',
+  path: '/tools/exchange-rate',
+}
+
+export const tools: ToolDefinition[] = [textCompareTool, textCleanerTool, exchangeRateTool]
 
 export function findToolById(id: string): ToolDefinition | undefined {
   return tools.find((tool) => tool.id === id)

@@ -1,6 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
-import { textCleanerTool, textCompareTool } from '../tools'
+import { exchangeRateTool, textCleanerTool, textCompareTool } from '../tools'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -19,6 +19,11 @@ const router = createRouter({
       path: textCleanerTool.path,
       name: `tool-${textCleanerTool.id}`,
       component: () => import('@/tools/text-cleaner/TextCleanerHomeView.vue'),
+    },
+    {
+      path: exchangeRateTool.path,
+      name: `tool-${exchangeRateTool.id}`,
+      component: () => import('@/tools/exchange-rate/ExchangeRateView.vue'),
     },
     {
       path: '/tools/text-cleaner/pdf',
