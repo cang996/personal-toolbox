@@ -32,7 +32,12 @@ function comparison(options: { marketStatus?: RateStatus } = {}): ExchangeRateCo
       bank('ICBC', '中国工商银行', 'stale', '4.7942'),
       bank('CCB', '中国建设银行', 'unavailable', null),
       bank('ABC', '中国农业银行', 'unsupported', null),
-      bank('CMB', '招商银行', 'available', null),
+      {
+        ...bank('CMB', '招商银行', 'available', null),
+        cash_buy: '4.8027',
+        cash_sell: '4.8408',
+        published_at: '2026-08-24T13:00:12+08:00',
+      },
     ],
   }
 }
@@ -89,12 +94,38 @@ describe('ExchangeRateView', () => {
     expect(wrapper.text()).toContain('银行现汇卖出价')
     expect(wrapper.text()).toContain('银行现钞买入价')
     expect(wrapper.text()).toContain('银行现钞卖出价')
-    expect(wrapper.text()).toContain('当前可用')
+    expect(wrapper.text()).toContain('当前有报价')
+    expect(wrapper.text()).not.toContain('当前可用')
     expect(wrapper.text()).toContain('可能已过期')
     expect(wrapper.text()).toContain('暂无当前报价')
-    expect(wrapper.text()).toContain('暂不支持此币种')
+    expect(wrapper.text()).toContain('该银行暂不支持此币种')
     expect(wrapper.findAll('tbody td').some((cell) => cell.text() === '—')).toBe(true)
+    expect(wrapper.text()).toContain(
+      '页面展示银行公开报价，仅供比较参考；实际可办理币种及成交价格以银行渠道为准。',
+    )
     expect(wrapper.text()).not.toContain('汇率数据暂不可用')
+  })
+
+  it('keeps a partial quote available without inferring unsupported from null prices', async () => {
+    mockedFetch.mockResolvedValue(comparison())
+    const wrapper = mountView()
+    await flushPromises()
+
+    const rows = wrapper.findAll('tbody tr')
+    const unavailableRow = rows[2]
+    const partialRow = rows[4]
+
+    expect(unavailableRow?.text()).toContain('暂无当前报价')
+    expect(unavailableRow?.text()).not.toContain('不支持')
+    expect(partialRow?.text()).toContain('当前有报价')
+    expect(partialRow?.text()).not.toContain('不支持')
+    expect(partialRow?.findAll('td').map((cell) => cell.text())).toEqual([
+      '—',
+      '—',
+      '4.8027',
+      '4.8408',
+      '2026-08-24 13:00:12',
+    ])
   })
 
   it('treats an unavailable market reference as partial data, not a page error', async () => {
