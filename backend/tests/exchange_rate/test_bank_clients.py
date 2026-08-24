@@ -1,3 +1,4 @@
+from decimal import Decimal
 from pathlib import Path
 
 import httpx
@@ -10,6 +11,7 @@ from backend.app.exchange_rate.clients import (
     CmbClient,
     IcbcClient,
 )
+from backend.app.exchange_rate.policies import PRODUCT_TARGET_CURRENCIES
 
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -55,7 +57,9 @@ def test_naive_china_bank_timestamp_uses_asia_shanghai(client_type: type) -> Non
         CmbClient: "cmb_rates.json",
     }
     fixture = (FIXTURES / fixture_names[client_type]).read_bytes()
-    transport = httpx.MockTransport(lambda request: httpx.Response(200, content=fixture))
+    transport = httpx.MockTransport(
+        lambda request: httpx.Response(200, content=fixture)
+    )
 
     rates = client_type(transport=transport).fetch_rates()
 
@@ -71,3 +75,21 @@ def test_abc_preserves_upstream_offset_and_mapper_derivation() -> None:
     assert all(rate.published_at.isoformat().endswith("+08:00") for rate in rates)
     assert all(rate.cash_sell == rate.spot_sell for rate in rates)
     assert all(rate.derived_fields == frozenset({"cash_sell"}) for rate in rates)
+
+
+def test_boc_client_maps_all_product_targets_and_preserves_partial_quotes() -> None:
+    fixture = (FIXTURES / "boc_rates.html").read_bytes()
+    transport = httpx.MockTransport(lambda request: httpx.Response(200, content=fixture))
+
+    rates = BocClient(transport=transport).fetch_rates()
+    by_code = {rate.currency_code: rate for rate in rates}
+
+    assert set(PRODUCT_TARGET_CURRENCIES).issubset(by_code)
+    assert by_code["MYR"].spot_buy == Decimal("1.6432")
+    assert by_code["MYR"].cash_buy is None
+    assert by_code["MYR"].spot_sell == Decimal("1.6581")
+    assert by_code["MYR"].cash_sell is None
+    assert by_code["TWD"].spot_buy is None
+    assert by_code["TWD"].cash_buy == Decimal("0.2001")
+    assert by_code["TWD"].spot_sell is None
+    assert by_code["TWD"].cash_sell == Decimal("0.2193")
