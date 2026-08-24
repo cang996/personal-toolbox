@@ -15,10 +15,9 @@ export function formatPrice(value: string | null): string {
   const fraction = match[3] ?? ''
   const decimalPlaces = integer !== '0' ? 4 : 6
   const rounded = roundFraction(integer, fraction, decimalPlaces)
-  const visibleFraction = rounded.fraction.replace(/0+$/, '')
-  const visibleSign = rounded.integer === '0' && visibleFraction.length === 0 ? '' : sign
+  const visibleSign = rounded.integer === '0' && /^0+$/.test(rounded.fraction) ? '' : sign
 
-  return `${visibleSign}${rounded.integer}${visibleFraction ? `.${visibleFraction}` : ''}`
+  return `${visibleSign}${rounded.integer}.${rounded.fraction}`
 }
 
 export function formatBeijingTime(value: string | null): string {

@@ -68,10 +68,19 @@ describe('exchange-rate presentation utilities', () => {
     expect(currencies).toHaveLength(14)
   })
 
-  it('rounds only for display without exposing long tails', () => {
+  it('uses fixed four-place display for rates greater than or equal to one', () => {
+    expect(formatPrice('4.803')).toBe('4.8030')
+    expect(formatPrice('4.8411')).toBe('4.8411')
+    expect(formatPrice('4.839')).toBe('4.8390')
+    expect(formatPrice('1')).toBe('1.0000')
     expect(formatPrice('4.8350599999999995')).toBe('4.8351')
+  })
+
+  it('uses fixed six-place display below one without binary-float artifacts', () => {
+    expect(formatPrice('0.0453')).toBe('0.045300')
+    expect(formatPrice('0.004851')).toBe('0.004851')
     expect(formatPrice('0.04821099')).toBe('0.048211')
-    expect(formatPrice('0.100000')).toBe('0.1')
+    expect(formatPrice('0.100000')).toBe('0.100000')
     expect(formatPrice(null)).toBe('—')
     expect(formatPrice('not-a-rate')).toBe('—')
   })

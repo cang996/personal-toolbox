@@ -21,3 +21,4 @@ PRODUCT_TARGET_CURRENCIES = (
 
 CHINA_SOURCE_TIMEZONE = ZoneInfo("Asia/Shanghai")
 BANK_QUOTE_STALE_AFTER = timedelta(days=7)
+BANK_SNAPSHOT_CACHE_TTL = timedelta(minutes=5)
