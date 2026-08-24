@@ -1,5 +1,6 @@
 export interface MarkdownTextCleanerOptions {
   preserveLinkUrls: boolean
+  numberHeadings?: boolean
 }
 
 const horizontalRule = /^\s{0,3}(?:[-*_]\s*){3,}$/
@@ -126,7 +127,9 @@ function isOrdinarySetextText(line: string): boolean {
   return Boolean(line.trim()) && !atxHeading.test(line) && !blockquote.test(line) && !unorderedList.test(line) && !taskList.test(line)
 }
 
-function formatHeading(level: number, content: string, counters: number[]): string {
+function formatHeading(level: number, content: string, counters: number[], numberHeadings: boolean): string {
+  if (!numberHeadings) return content
+
   for (let index = 0; index < level - 1; index += 1) {
     if (counters[index] === 0) counters[index] = 1
   }
@@ -188,7 +191,9 @@ export function cleanMarkdownText(input: string, options: MarkdownTextCleanerOpt
     if (atx) {
       const marker = atx[1] ?? ''
       const content = atx[2] ?? ''
-      output.push(restoreLine(formatHeading(marker.length, cleanInlineMarkdown(content, options), headingCounters)))
+      output.push(
+        restoreLine(formatHeading(marker.length, cleanInlineMarkdown(content, options), headingCounters, options.numberHeadings ?? false)),
+      )
       continue
     }
 
@@ -196,7 +201,9 @@ export function cleanMarkdownText(input: string, options: MarkdownTextCleanerOpt
     if (setext && isOrdinarySetextText(line)) {
       const marker = setext[1] ?? ''
       const level = marker.startsWith('=') ? 1 : 2
-      output.push(restoreLine(formatHeading(level, cleanInlineMarkdown(line.trim(), options), headingCounters)))
+      output.push(
+        restoreLine(formatHeading(level, cleanInlineMarkdown(line.trim(), options), headingCounters, options.numberHeadings ?? false)),
+      )
       index += 1
       continue
     }

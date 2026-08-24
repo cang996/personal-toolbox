@@ -36,14 +36,33 @@ describe('MarkdownTextCleanerView', () => {
 
   it('clears fields and restores the default option', async () => {
     const wrapper = mountView()
-    const checkbox = wrapper.find('input[type="checkbox"]')
+    const checkboxes = wrapper.findAll('input[type="checkbox"]')
+    const preserveLinkUrls = checkboxes[0]!
+    const numberHeadings = checkboxes[1]!
     await wrapper.find('#markdown-source-text').setValue('[Link](https://example.com)')
-    await checkbox.setValue(true)
+    await preserveLinkUrls.setValue(true)
+    await numberHeadings.setValue(true)
     await buttons(wrapper).clean.trigger('click')
     await buttons(wrapper).clear.trigger('click')
 
     expect((wrapper.find('#markdown-source-text').element as HTMLTextAreaElement).value).toBe('')
-    expect((checkbox.element as HTMLInputElement).checked).toBe(false)
+    expect((preserveLinkUrls.element as HTMLInputElement).checked).toBe(false)
+    expect((numberHeadings.element as HTMLInputElement).checked).toBe(false)
+  })
+
+  it('leaves heading numbering off by default and applies the existing numbering when enabled', async () => {
+    const wrapper = mountView()
+    const source = wrapper.find('#markdown-source-text')
+    const numberHeadings = wrapper.findAll('input[type="checkbox"]')[1]!
+
+    expect((numberHeadings.element as HTMLInputElement).checked).toBe(false)
+    await source.setValue('# Title\n### Detail')
+    await buttons(wrapper).clean.trigger('click')
+    expect((wrapper.find('#cleaned-markdown-text').element as HTMLTextAreaElement).value).toBe('Title\nDetail')
+
+    await numberHeadings.setValue(true)
+    await buttons(wrapper).clean.trigger('click')
+    expect((wrapper.find('#cleaned-markdown-text').element as HTMLTextAreaElement).value).toBe('1. Title\n1.1.1 Detail')
   })
 
   it('copies a result and displays a clipboard failure', async () => {
@@ -54,7 +73,7 @@ describe('MarkdownTextCleanerView', () => {
     await buttons(wrapper).clean.trigger('click')
     await buttons(wrapper).copy.trigger('click')
 
-    expect(writeText).toHaveBeenCalledWith('1. Title')
+    expect(writeText).toHaveBeenCalledWith('Title')
     writeText.mockRejectedValueOnce(new Error('blocked'))
     await buttons(wrapper).copy.trigger('click')
     expect(wrapper.text()).toContain('复制失败，请手动选择结果文本后复制。')

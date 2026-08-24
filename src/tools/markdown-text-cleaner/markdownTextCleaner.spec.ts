@@ -4,16 +4,24 @@ import { cleanMarkdownText } from './markdownTextCleaner'
 
 describe('cleanMarkdownText', () => {
   const withoutUrls = { preserveLinkUrls: false }
+  const withoutUrlsNumbered = { preserveLinkUrls: false, numberHeadings: true }
 
-  it('numbers ATX headings, including skipped levels', () => {
-    expect(cleanMarkdownText('# 第一部分\n## 背景\n## 目标\n# 第二部分\n## 实现', withoutUrls)).toBe(
-      '1. 第一部分\n1.1 背景\n1.2 目标\n2. 第二部分\n2.1 实现',
+  it('removes ATX heading markers without numbering by default', () => {
+    expect(cleanMarkdownText('# 第一部分\n## 背景\n### 目标', withoutUrls)).toBe('第一部分\n背景\n目标')
+    expect(cleanMarkdownText('Project Title\n=============\n\nSection\n-------', withoutUrls)).toBe(
+      'Project Title\n\nSection',
     )
-    expect(cleanMarkdownText('### 测试方法\n\n## 项目背景', withoutUrls)).toBe('1.1.1 测试方法\n\n1.2 项目背景')
   })
 
-  it('numbers Setext headings before removing horizontal rules', () => {
-    expect(cleanMarkdownText('Project Title\n=============\n\nSection\n-------\n\n---', withoutUrls)).toBe(
+  it('numbers ATX headings, including skipped levels, when enabled', () => {
+    expect(cleanMarkdownText('# 第一部分\n## 背景\n## 目标\n# 第二部分\n## 实现', withoutUrlsNumbered)).toBe(
+      '1. 第一部分\n1.1 背景\n1.2 目标\n2. 第二部分\n2.1 实现',
+    )
+    expect(cleanMarkdownText('### 测试方法\n\n## 项目背景', withoutUrlsNumbered)).toBe('1.1.1 测试方法\n\n1.2 项目背景')
+  })
+
+  it('numbers Setext headings before removing horizontal rules when enabled', () => {
+    expect(cleanMarkdownText('Project Title\n=============\n\nSection\n-------\n\n---', withoutUrlsNumbered)).toBe(
       '1. Project Title\n\n1.1 Section',
     )
   })
@@ -197,7 +205,7 @@ const link = "[text](url)"`)
 npm run dev
 \`\`\``
 
-    expect(cleanMarkdownText(input, withoutUrls)).toBe(
+    expect(cleanMarkdownText(input, withoutUrlsNumbered)).toBe(
       '1. PDF 文本清理工具\n\n这是一个用于清理 PDF 复制文本 的简单工具。\n\n1.1 主要功能\n\n• 清理异常换行\n• 修复中文字符间距\n• 保留 Java API 等英文词组\n• 查看项目说明\n\n所有内容只在浏览器本地处理。\n\n1.1.1 使用命令\n\nnpm run dev',
     )
   })
@@ -258,7 +266,7 @@ npm run dev
 
 旧方案已经废弃。`
 
-    expect(cleanMarkdownText(input, { preserveLinkUrls: true })).toBe(expectedWithUrls)
-    expect(cleanMarkdownText(input, withoutUrls)).toBe(expectedWithUrls.replace('（https://example.com/docs）', ''))
+    expect(cleanMarkdownText(input, { preserveLinkUrls: true, numberHeadings: true })).toBe(expectedWithUrls)
+    expect(cleanMarkdownText(input, withoutUrlsNumbered)).toBe(expectedWithUrls.replace('（https://example.com/docs）', ''))
   })
 })
