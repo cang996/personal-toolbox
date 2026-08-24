@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from decimal import Decimal, InvalidOperation
 
 from bs4 import BeautifulSoup
 
@@ -12,6 +13,10 @@ CURRENCY_CODES = {
     "英镑": "GBP",
     "日元": "JPY",
     "港币": "HKD",
+    "韩国元": "KRW",
+    "澳门元": "MOP",
+    "林吉特": "MYR",
+    "新台币": "TWD",
     "加拿大元": "CAD",
     "新加坡元": "SGD",
     "瑞士法郎": "CHF",
@@ -104,6 +109,6 @@ def _parse_quote(value: str) -> float | None:
         return None
 
     try:
-        return float(value.replace(",", "")) / BOC_QUOTE_UNIT
-    except ValueError as error:
+        return float(Decimal(value.replace(",", "")) / BOC_QUOTE_UNIT)
+    except InvalidOperation as error:
         raise ValueError(f"Invalid BOC quote value: {value!r}.") from error

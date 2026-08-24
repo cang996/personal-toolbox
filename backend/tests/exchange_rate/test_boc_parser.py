@@ -27,7 +27,38 @@ def test_parses_australian_dollar_and_normalizes_per_100_quote(boc_rates) -> Non
 def test_parses_multiple_common_currencies(boc_rates) -> None:
     parsed_codes = {rate.currency_code for rate in boc_rates}
 
-    assert {"USD", "EUR", "GBP", "JPY"}.issubset(parsed_codes)
+    assert {
+        "USD",
+        "CAD",
+        "EUR",
+        "GBP",
+        "CHF",
+        "AUD",
+        "NZD",
+        "JPY",
+        "KRW",
+        "HKD",
+        "MOP",
+        "TWD",
+        "SGD",
+        "MYR",
+    }.issubset(parsed_codes)
+
+
+def test_preserves_boc_partial_quote_semantics(boc_rates) -> None:
+    myr = next(rate for rate in boc_rates if rate.currency_code == "MYR")
+    twd = next(rate for rate in boc_rates if rate.currency_code == "TWD")
+
+    assert myr.spot_buy == pytest.approx(1.6432)
+    assert myr.cash_buy is None
+    assert myr.spot_sell == pytest.approx(1.6581)
+    assert myr.cash_sell is None
+    assert (twd.spot_buy, twd.cash_buy, twd.spot_sell, twd.cash_sell) == (
+        None,
+        pytest.approx(0.2001),
+        None,
+        pytest.approx(0.2193),
+    )
 
 
 def test_does_not_treat_headers_as_currencies(boc_rates) -> None:
