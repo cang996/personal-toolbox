@@ -9,12 +9,13 @@ type CleanerState = 'idle' | 'empty' | 'success' | 'copy-success' | 'copy-error'
 
 const inputText = ref('')
 const preserveLinkUrls = ref(false)
+const numberHeadings = ref(false)
 const result = ref('')
 const state = ref<CleanerState>('idle')
 const statusMessage = ref('粘贴 Markdown 后点击“开始清理”。')
 const hasResult = computed(() => result.value.length > 0)
 
-watch([inputText, preserveLinkUrls], invalidateResult, { flush: 'sync' })
+watch([inputText, preserveLinkUrls, numberHeadings], invalidateResult, { flush: 'sync' })
 
 function runCleaner() {
   if (!inputText.value.trim()) {
@@ -24,7 +25,10 @@ function runCleaner() {
     return
   }
 
-  result.value = cleanMarkdownText(inputText.value, { preserveLinkUrls: preserveLinkUrls.value })
+  result.value = cleanMarkdownText(inputText.value, {
+    preserveLinkUrls: preserveLinkUrls.value,
+    numberHeadings: numberHeadings.value,
+  })
   state.value = 'success'
   statusMessage.value = '已生成清理结果。'
 }
@@ -33,6 +37,7 @@ function clearAll() {
   inputText.value = ''
   result.value = ''
   preserveLinkUrls.value = false
+  numberHeadings.value = false
   state.value = 'idle'
   statusMessage.value = '已清空输入和清理结果。'
 }
@@ -75,10 +80,17 @@ function invalidateResult() {
       </div>
 
       <section class="controls" aria-label="清理选项和操作">
-        <label class="checkbox-label">
-          <input v-model="preserveLinkUrls" type="checkbox" />
-          保留链接 URL
-        </label>
+        <div class="options">
+          <label class="checkbox-label">
+            <input v-model="preserveLinkUrls" type="checkbox" />
+            保留链接 URL
+          </label>
+
+          <label class="checkbox-label">
+            <input v-model="numberHeadings" type="checkbox" />
+            自动为标题编号
+          </label>
+        </div>
 
         <div class="actions">
           <button type="button" class="primary-action" @click="runCleaner">开始清理</button>
@@ -99,7 +111,7 @@ function invalidateResult() {
 label { color: var(--color-text-primary); font-weight: 700; }
 textarea { min-width: 0; min-height: 20rem; resize: vertical; border: 1px solid var(--color-border-subtle); border-radius: var(--radius-control); background: var(--color-surface); padding: 0.875rem; color: var(--color-text-primary); line-height: 1.6; overflow-wrap: anywhere; white-space: pre-wrap; }
 textarea:focus-visible { border-color: var(--color-accent); }
-.controls, .actions { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: center; }
+.controls, .options, .actions { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: center; }
 .controls { justify-content: space-between; }
 .checkbox-label { display: inline-flex; gap: var(--space-2); align-items: center; cursor: pointer; }
 button { min-height: var(--control-height); border: 1px solid var(--color-border-subtle); border-radius: var(--radius-control); background: var(--color-surface); padding: 0.55rem 0.85rem; color: var(--color-text-primary); font-weight: 700; cursor: pointer; }
