@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>Personal Toolbox terminal mark</title>
+  <path fill="#151714" d="M2 2h51l9 9v51H2z"/>
+  <path fill="none" stroke="#454842" stroke-width="2" d="M3 3h49.6L61 11.4V61H3z"/>
+  <path fill="#d18a08" d="M8 8h4v48H8z"/>
+  <path fill="none" stroke="#f0eee5" stroke-width="5" d="m21 20 12 12-12 12"/>
+  <path fill="#d18a08" d="M35 41h15v5H35z"/>
+</svg>

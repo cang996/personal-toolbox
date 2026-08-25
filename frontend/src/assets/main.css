@@ -2,11 +2,32 @@
 @import './base.css';
 
 #app {
-  font-weight: normal;
+  min-height: 100vh;
 }
 
-a {
+a,
+button,
+input,
+textarea,
+select {
   transition:
-    border-color 0.16s ease,
-    color 0.16s ease;
+    border-color var(--transition-fast) ease,
+    background-color var(--transition-fast) ease,
+    color var(--transition-fast) ease,
+    box-shadow var(--transition-fast) ease;
+}
+
+input,
+textarea,
+select {
+  accent-color: var(--color-accent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
 }

@@ -138,7 +138,9 @@ Service 负责跨来源集成：V1 币种校验、五家银行并发聚合、完
 
 ### 4.7 FastAPI
 
-`backend/app/main.py` 创建唯一的 FastAPI application，配置 application-wide CORS、production dependencies，并 include exchange-rate router。`backend/app/exchange_rate/api.py` 只保留 feature route、Pydantic response schema、400 validation response 和 Decimal/datetime/enum serialization。默认只允许 `http://localhost:5173`，可用 `FRONTEND_ORIGIN` 替换为另一个明确 origin。
+`backend/app/main.py` 创建唯一的 FastAPI application，配置 application-wide CORS、production dependencies，并 include exchange-rate router。`backend/app/exchange_rate/api.py` 只保留 feature route、Pydantic response schema、400 validation response 和 Decimal/datetime/enum serialization，不再是 ASGI application entrypoint。默认只允许 `http://localhost:5173`，可用 `FRONTEND_ORIGIN` 替换为另一个明确 origin。
+
+本地推荐从 `backend/` 运行 `.\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000`。从仓库根目录工作时，等价命令为 `backend\.venv\Scripts\python.exe -m uvicorn app.main:app --app-dir backend --reload --host 127.0.0.1 --port 8000`。旧的 `backend.app.exchange_rate.api:app` 已失效，不应通过在 feature module 中恢复顶级 app 来兼容。
 
 ### 4.8 Frontend
 
