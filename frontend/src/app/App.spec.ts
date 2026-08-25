@@ -139,8 +139,12 @@ describe('App', () => {
 
   it('shows the safe GitHub Profile action on Home instead of a redundant Home link', async () => {
     const home = await mountAt('/')
+    const appHeader = home.find('header.app-header')
+    const actionSlot = appHeader.find('nav.header-action-slot')
     const githubLink = home.find('nav a.github-link')
 
+    expect(home.findAll('header.app-header')).toHaveLength(1)
+    expect(actionSlot.exists()).toBe(true)
     expect(githubLink.exists()).toBe(true)
     expect(githubLink.text()).toContain('GITHUB')
     expect(githubLink.text()).toContain('PROFILE ↗')
@@ -148,21 +152,27 @@ describe('App', () => {
     expect(githubLink.attributes('target')).toBe('_blank')
     expect(githubLink.attributes('rel')).toBe('noopener noreferrer')
     expect(githubLink.classes()).toContain('header-action')
-    expect(home.find('nav.header-action-slot').exists()).toBe(true)
+    expect(githubLink.findAll(':scope > .header-action-label')).toHaveLength(1)
+    expect(githubLink.findAll(':scope > .header-action-value')).toHaveLength(1)
     expect(home.find('nav a.home-link').exists()).toBe(false)
     expect(home.find('nav').text()).not.toContain('首页')
   })
 
   it('keeps the Home navigation action on tool routes', async () => {
     const tool = await mountAt(textCompareTool.path)
+    const appHeader = tool.find('header.app-header')
+    const actionSlot = appHeader.find('nav.header-action-slot')
     const homeLink = tool.find('nav a.home-link')
 
+    expect(tool.findAll('header.app-header')).toHaveLength(1)
+    expect(actionSlot.exists()).toBe(true)
     expect(homeLink.exists()).toBe(true)
     expect(homeLink.attributes('href')).toBe('/')
     expect(homeLink.text()).toContain('INDEX')
     expect(homeLink.text()).toContain('首页')
     expect(homeLink.classes()).toContain('header-action')
-    expect(tool.find('nav.header-action-slot').exists()).toBe(true)
+    expect(homeLink.findAll(':scope > .header-action-label')).toHaveLength(1)
+    expect(homeLink.findAll(':scope > .header-action-value')).toHaveLength(1)
     expect(tool.find('nav a.github-link').exists()).toBe(false)
   })
 

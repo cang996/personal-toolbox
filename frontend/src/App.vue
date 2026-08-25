@@ -92,18 +92,22 @@ onBeforeUnmount(() => {
               rel="noopener noreferrer"
               aria-label="在新窗口打开 cang996 的 GitHub Profile"
             >
-              <svg class="github-icon" viewBox="0 0 24 24" aria-hidden="true">
-                <path
-                  fill="currentColor"
-                  d="M12 2.6a9.6 9.6 0 0 0-3 18.72c.48.09.66-.21.66-.47v-1.68c-2.68.58-3.25-1.14-3.25-1.14-.44-1.12-1.07-1.42-1.07-1.42-.87-.6.07-.59.07-.59.97.07 1.48 1 1.48 1 .86 1.47 2.25 1.05 2.8.8.08-.62.34-1.05.61-1.29-2.14-.24-4.39-1.07-4.39-4.75 0-1.05.38-1.91 1-2.58-.1-.24-.43-1.22.09-2.54 0 0 .81-.26 2.64.98A9.2 9.2 0 0 1 12 7.4c.82 0 1.63.11 2.4.32 1.83-1.24 2.64-.98 2.64-.98.52 1.32.19 2.3.09 2.54.62.67 1 1.53 1 2.58 0 3.69-2.26 4.5-4.4 4.74.35.3.65.88.65 1.78v2.47c0 .26.18.57.66.47A9.6 9.6 0 0 0 12 2.6Z"
-                />
-              </svg>
-              <span>GITHUB</span>
-              <strong>PROFILE ↗</strong>
+              <span class="header-action-label">GITHUB</span>
+              <strong class="header-action-value">
+                <svg class="github-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path
+                    fill="currentColor"
+                    d="M12 2.6a9.6 9.6 0 0 0-3 18.72c.48.09.66-.21.66-.47v-1.68c-2.68.58-3.25-1.14-3.25-1.14-.44-1.12-1.07-1.42-1.07-1.42-.87-.6.07-.59.07-.59.97.07 1.48 1 1.48 1 .86 1.47 2.25 1.05 2.8.8.08-.62.34-1.05.61-1.29-2.14-.24-4.39-1.07-4.39-4.75 0-1.05.38-1.91 1-2.58-.1-.24-.43-1.22.09-2.54 0 0 .81-.26 2.64.98A9.2 9.2 0 0 1 12 7.4c.82 0 1.63.11 2.4.32 1.83-1.24 2.64-.98 2.64-.98.52 1.32.19 2.3.09 2.54.62.67 1 1.53 1 2.58 0 3.69-2.26 4.5-4.4 4.74.35.3.65.88.65 1.78v2.47c0 .26.18.57.66.47A9.6 9.6 0 0 0 12 2.6Z"
+                  />
+                </svg>
+                <span class="header-action-text">PROFILE ↗</span>
+              </strong>
             </a>
             <RouterLink v-else class="header-action home-link" to="/">
-              <span>INDEX</span>
-              <strong>首页</strong>
+              <span class="header-action-label">INDEX</span>
+              <strong class="header-action-value">
+                <span class="header-action-text">首页</span>
+              </strong>
             </RouterLink>
           </nav>
         </div>
@@ -135,7 +139,7 @@ onBeforeUnmount(() => {
   align-items: stretch;
   justify-content: space-between;
   width: min(100%, var(--content-max-width));
-  min-height: 4.75rem;
+  block-size: 4.75rem;
   margin: 0 auto;
   padding-inline: var(--space-4);
 }
@@ -235,25 +239,39 @@ onBeforeUnmount(() => {
 }
 
 .header-action {
+  grid-template-rows: auto auto;
   inline-size: 7.25rem;
   min-inline-size: 7.25rem;
+  block-size: 100%;
   color: var(--color-text-primary);
+  line-height: 1.2;
   text-decoration: none;
 }
 
 .header-action-slot {
   display: flex;
+  inline-size: 7.25rem;
+  min-inline-size: 7.25rem;
 }
 
-.header-action span {
+.header-action-label {
   color: var(--color-text-muted);
   font-size: var(--font-size-label);
   font-weight: 700;
   letter-spacing: 0.12em;
 }
 
-.header-action strong {
+.header-action-value {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+  font-size: var(--font-size-meta);
   font-weight: 700;
+}
+
+.header-action-text {
+  white-space: nowrap;
 }
 
 .header-action:hover,
@@ -262,19 +280,11 @@ onBeforeUnmount(() => {
   color: var(--color-accent-active);
 }
 
-.github-link {
-  position: relative;
-  grid-template-columns: auto 1fr;
-}
-
-.github-link strong {
-  grid-column: 2;
-}
-
 .github-icon {
-  grid-row: 1 / 3;
+  display: block;
+  flex: 0 0 1rem;
   width: 1rem;
-  align-self: center;
+  height: 1rem;
 }
 
 .app-main {
@@ -285,6 +295,7 @@ onBeforeUnmount(() => {
 
 @media (max-width: 760px) {
   .header-inner {
+    block-size: auto;
     flex-direction: column;
   }
 
@@ -293,6 +304,7 @@ onBeforeUnmount(() => {
   }
 
   .header-console {
+    block-size: 4.75rem;
     border-top: 1px solid var(--color-border-subtle);
     border-left: 0;
   }
@@ -317,6 +329,7 @@ onBeforeUnmount(() => {
     min-width: 0;
   }
 
+  .header-action-slot,
   .header-action {
     inline-size: 6.5rem;
     min-inline-size: 6.5rem;
