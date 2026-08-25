@@ -4,14 +4,14 @@ from pathlib import Path
 import httpx
 import pytest
 
-from backend.app.exchange_rate.clients import (
+from app.exchange_rate.clients import (
     AbcClient,
     BocClient,
     CcbClient,
     CmbClient,
     IcbcClient,
 )
-from backend.app.exchange_rate.policies import PRODUCT_TARGET_CURRENCIES
+from app.exchange_rate.policies import PRODUCT_TARGET_CURRENCIES
 
 
 FIXTURES = Path(__file__).parent / "fixtures"

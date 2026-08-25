@@ -5,8 +5,8 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Protocol
 
-from backend.app.exchange_rate.models import BankExchangeRate
-from backend.app.exchange_rate.policies import BANK_SNAPSHOT_CACHE_TTL
+from .models import BankExchangeRate
+from .policies import BANK_SNAPSHOT_CACHE_TTL
 
 
 LOGGER = logging.getLogger(__name__)

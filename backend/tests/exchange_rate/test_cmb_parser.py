@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from backend.app.exchange_rate.banks.cmb import parse_cmb_rates
+from app.exchange_rate.banks.cmb import parse_cmb_rates
 
 
 FIXTURE_PATH = Path(__file__).parent / "fixtures" / "cmb_rates.json"

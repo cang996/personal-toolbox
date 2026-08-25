@@ -155,7 +155,7 @@ result: one 1:2 modified group with old line [1] and new lines [1, 2]
 - `textComparePresentation.spec.ts` 覆盖 code-point 计数、阈值边界、提示侧别和 equal run 折叠。
 - `TextCompareView.spec.ts` 覆盖编辑/结果模式、选项保留、只看差异、1:N/N:1 并排渲染、大小阻止和返回顶部生命周期。
 
-判断算法为 LCS、自定义 modified matching 及非 Myers 的直接证据位于 `findLineMatches`、`findModifiedMatches`、`findCharacterMatches`；`package.json` 也没有 diff 运行时依赖。
+判断算法为 LCS、自定义 modified matching 及非 Myers 的直接证据位于 `findLineMatches`、`findModifiedMatches`、`findCharacterMatches`；`frontend/package.json` 也没有 diff 运行时依赖。
 
 ## 17. Trade-offs and Known Limitations
 
@@ -167,4 +167,4 @@ result: one 1:2 modified group with old line [1] and new lines [1, 2]
 - 全部计算同步发生在浏览器主线程；长文本可能暂时影响交互响应。
 - 功能没有文件导入、持久化、协作、历史版本、patch 应用或后端处理。
 
-修改算法时应优先更新 `textDiff.ts` 和 `textDiff.spec.ts`；只改变显示过滤或大小提示时更新 `textComparePresentation.ts`；交互和 DOM 布局留在 `TextCompareView.vue`。不要把 feature-specific diff 类型移入 `src/shared`，除非出现真正相同的跨工具契约。
+修改算法时应优先更新 `textDiff.ts` 和 `textDiff.spec.ts`；只改变显示过滤或大小提示时更新 `textComparePresentation.ts`；交互和 DOM 布局留在 `TextCompareView.vue`。不要把 feature-specific diff 类型移入 `frontend/src/shared`，除非出现真正相同的跨工具契约。

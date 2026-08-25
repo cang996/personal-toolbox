@@ -1,6 +1,6 @@
 import type { CurrencyCode, ExchangeRateComparison } from './types'
 
-const DEFAULT_API_BASE_URL = import.meta.env.DEV ? 'http://127.0.0.1:8000' : ''
+const DEFAULT_API_BASE_URL = ''
 
 export class ExchangeRateApiError extends Error {
   constructor() {

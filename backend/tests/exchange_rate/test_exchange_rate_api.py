@@ -4,10 +4,10 @@ from pathlib import Path
 import httpx
 from fastapi.testclient import TestClient
 
-from backend.app.exchange_rate.api import create_app
-from backend.app.exchange_rate.clients import BocClient
-from backend.app.exchange_rate.service import ExchangeRateService
-from backend.tests.exchange_rate.test_exchange_rate_service import (
+from app.exchange_rate.clients import BocClient
+from app.exchange_rate.service import ExchangeRateService
+from app.main import create_app
+from tests.exchange_rate.test_exchange_rate_service import (
     NOW,
     _BankClient,
     _MarketProvider,

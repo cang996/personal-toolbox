@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from backend.app.exchange_rate.banks.ccb import parse_ccb_rates
+from app.exchange_rate.banks.ccb import parse_ccb_rates
 
 
 FIXTURE_PATH = Path(__file__).parent / "fixtures" / "ccb_rates.xml"

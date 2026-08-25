@@ -8,9 +8,9 @@ from typing import Any
 
 import httpx
 
-from backend.app.exchange_rate.market_reference import MarketReferenceRate
-from backend.app.exchange_rate.models import RateStatus
-from backend.app.exchange_rate.policies import PRODUCT_TARGET_CURRENCIES
+from .market_reference import MarketReferenceRate
+from .models import RateStatus
+from .policies import PRODUCT_TARGET_CURRENCIES
 
 
 CURRENCYBEACON_LATEST_URL = "https://api.currencybeacon.com/v1/latest"
