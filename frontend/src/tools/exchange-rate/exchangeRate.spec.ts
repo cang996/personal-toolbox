@@ -41,9 +41,9 @@ describe('exchange-rate API client', () => {
     expect(typeof result.market_reference.rate).toBe('string')
   })
 
-  it('uses a localhost default and strips trailing slashes from configuration', () => {
+  it('uses a same-origin default and strips trailing slashes from configuration', () => {
     expect(getApiBaseUrl('http://localhost:9000///')).toBe('http://localhost:9000')
-    expect(getApiBaseUrl('')).toBe('http://127.0.0.1:8000')
+    expect(getApiBaseUrl('')).toBe('')
   })
 
   it('exposes a safe feature error for HTTP and network failures', async () => {

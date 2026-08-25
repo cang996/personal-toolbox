@@ -1,23 +1,13 @@
-import os
 from dataclasses import asdict
 from datetime import datetime
 from decimal import Decimal
 from enum import Enum
 from typing import Any
 
-from fastapi import FastAPI, HTTPException, Request
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
-from backend.app.exchange_rate.clients import production_bank_clients
-from backend.app.exchange_rate.currencybeacon import (
-    CurrencyBeaconCache,
-    CurrencyBeaconClient,
-)
-from backend.app.exchange_rate.service import ExchangeRateComparison, ExchangeRateService
-
-
-DEFAULT_FRONTEND_ORIGIN = "http://localhost:5173"
+from .service import ExchangeRateComparison
 
 
 class MarketReferenceResponse(BaseModel):
@@ -51,34 +41,19 @@ class ExchangeRateComparisonResponse(BaseModel):
     banks: list[BankQuoteResponse]
 
 
-def create_app(service: ExchangeRateService | None = None) -> FastAPI:
-    app = FastAPI(title="Personal Toolbox Exchange Rate API", version="1.0.0")
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=[os.environ.get("FRONTEND_ORIGIN", DEFAULT_FRONTEND_ORIGIN)],
-        allow_credentials=False,
-        allow_methods=["GET"],
-        allow_headers=["*"],
-    )
-    app.state.exchange_rate_service = service or ExchangeRateService(
-        production_bank_clients(),
-        CurrencyBeaconCache(CurrencyBeaconClient()),
-    )
+router = APIRouter()
 
-    @app.get(
-        "/api/exchange-rates/{currency_code}",
-        response_model=ExchangeRateComparisonResponse,
-    )
-    def get_exchange_rates(currency_code: str, request: Request) -> dict[str, Any]:
-        try:
-            comparison = request.app.state.exchange_rate_service.get_comparison(
-                currency_code
-            )
-        except ValueError as error:
-            raise HTTPException(status_code=400, detail=str(error)) from error
-        return serialize_comparison(comparison)
 
-    return app
+@router.get(
+    "/api/exchange-rates/{currency_code}",
+    response_model=ExchangeRateComparisonResponse,
+)
+def get_exchange_rates(currency_code: str, request: Request) -> dict[str, Any]:
+    try:
+        comparison = request.app.state.exchange_rate_service.get_comparison(currency_code)
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    return serialize_comparison(comparison)
 
 
 def serialize_comparison(comparison: ExchangeRateComparison) -> dict[str, Any]:
@@ -97,6 +72,3 @@ def _serialize(value: Any) -> Any:
     if isinstance(value, (list, tuple)):
         return [_serialize(item) for item in value]
     return value
-
-
-app = create_app()

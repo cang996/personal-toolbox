@@ -238,7 +238,8 @@ Do not target a ceremonial test count. Protect the behaviour that the upstream e
 Run focused tests while implementing. After the adapter is complete, run the full backend regression with the repository virtual environment:
 
 ```powershell
-backend\.venv\Scripts\python.exe -m pytest backend/tests -v
+cd backend
+.\.venv\Scripts\python.exe -m pytest tests -v
 ```
 
 If a test fails because of the new bank-specific work, inspect the evidence, fix the defect, and rerun. A first test failure is not by itself a reason to stop.

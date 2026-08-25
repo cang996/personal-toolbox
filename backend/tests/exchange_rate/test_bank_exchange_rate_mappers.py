@@ -5,19 +5,19 @@ from pathlib import Path
 
 import pytest
 
-from backend.app.exchange_rate.banks.abc import parse_abc_rates
-from backend.app.exchange_rate.banks.boc import BocRate, parse_boc_rates
-from backend.app.exchange_rate.banks.ccb import parse_ccb_rates
-from backend.app.exchange_rate.banks.cmb import CmbRate, parse_cmb_rates
-from backend.app.exchange_rate.banks.icbc import parse_icbc_rates
-from backend.app.exchange_rate.mappers import (
+from app.exchange_rate.banks.abc import parse_abc_rates
+from app.exchange_rate.banks.boc import BocRate, parse_boc_rates
+from app.exchange_rate.banks.ccb import parse_ccb_rates
+from app.exchange_rate.banks.cmb import CmbRate, parse_cmb_rates
+from app.exchange_rate.banks.icbc import parse_icbc_rates
+from app.exchange_rate.mappers import (
     map_abc_rate,
     map_boc_rate,
     map_ccb_rate,
     map_cmb_rate,
     map_icbc_rate,
 )
-from backend.app.exchange_rate.models import BankExchangeRate, RateStatus
+from app.exchange_rate.models import BankExchangeRate, RateStatus
 
 
 FIXTURE_DIRECTORY = Path(__file__).parent / "fixtures"

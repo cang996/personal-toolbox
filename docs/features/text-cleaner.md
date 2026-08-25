@@ -18,7 +18,7 @@ Text Cleaner 是一个纯前端文本处理工具，用来整理从 PDF 阅读�
 ## 3. Architecture
 
 ```text
-src/app/router/index.ts
+frontend/src/app/router/index.ts
   -> TextCleanerHomeView.vue
        |-> PdfTextCleanerView.vue -> cleanPdfText()
        `-> MarkdownTextCleanerView.vue -> cleanMarkdownText()
@@ -28,11 +28,11 @@ src/app/router/index.ts
 
 主要文件：
 
-- `src/tools/text-cleaner/TextCleanerHomeView.vue`
-- `src/tools/pdf-text-cleaner/PdfTextCleanerView.vue`
-- `src/tools/pdf-text-cleaner/pdfTextCleaner.ts`
-- `src/tools/markdown-text-cleaner/MarkdownTextCleanerView.vue`
-- `src/tools/markdown-text-cleaner/markdownTextCleaner.ts`
+- `frontend/src/tools/text-cleaner/TextCleanerHomeView.vue`
+- `frontend/src/tools/pdf-text-cleaner/PdfTextCleanerView.vue`
+- `frontend/src/tools/pdf-text-cleaner/pdfTextCleaner.ts`
+- `frontend/src/tools/markdown-text-cleaner/MarkdownTextCleanerView.vue`
+- `frontend/src/tools/markdown-text-cleaner/markdownTextCleaner.ts`
 
 Vue view 负责输入、选项、显式执行、结果失效、清空、复制和状态消息；两个 TypeScript utility 负责纯文本转换。模块没有互相导入。
 
@@ -158,13 +158,13 @@ textarea string + local option refs
 
 ## 14. Where to Modify
 
-- PDF 转换规则：`src/tools/pdf-text-cleaner/pdfTextCleaner.ts`，并同步扩充同目录 spec。
-- Markdown 转换规则：`src/tools/markdown-text-cleaner/markdownTextCleaner.ts`，并同步扩充同目录 spec。
+- PDF 转换规则：`frontend/src/tools/pdf-text-cleaner/pdfTextCleaner.ts`，并同步扩充同目录 spec。
+- Markdown 转换规则：`frontend/src/tools/markdown-text-cleaner/markdownTextCleaner.ts`，并同步扩充同目录 spec。
 - 页面选项和交互：各自的 `*View.vue` 与 `*View.spec.ts`。
-- 入口卡片：`src/tools/text-cleaner/`。
-- 应用路由和工具元数据：`src/app/router/index.ts`、`src/app/tools.ts`。
+- 入口卡片：`frontend/src/tools/text-cleaner/`。
+- 应用路由和工具元数据：`frontend/src/app/router/index.ts`、`frontend/src/app/tools.ts`。
 
-避免让一个 cleaner 直接依赖另一个 cleaner；只有语义、错误处理和变更原因真正一致的行为才应进入 `src/shared`。
+避免让一个 cleaner 直接依赖另一个 cleaner；只有语义、错误处理和变更原因真正一致的行为才应进入 `frontend/src/shared`。
 
 ## 15. Design Decisions
 

@@ -6,11 +6,11 @@ from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import Protocol
 
-from backend.app.exchange_rate.bank_cache import BankRateClient, BankSnapshotCache
-from backend.app.exchange_rate.currencybeacon import unavailable_market_reference
-from backend.app.exchange_rate.market_reference import MarketReferenceRate
-from backend.app.exchange_rate.models import BankExchangeRate, RateStatus
-from backend.app.exchange_rate.policies import (
+from .bank_cache import BankRateClient, BankSnapshotCache
+from .currencybeacon import unavailable_market_reference
+from .market_reference import MarketReferenceRate
+from .models import BankExchangeRate, RateStatus
+from .policies import (
     BANK_QUOTE_STALE_AFTER,
     PRODUCT_TARGET_CURRENCIES,
 )

@@ -72,7 +72,8 @@ Official upstream
 - `backend/app/exchange_rate/bank_cache.py`
 - `backend/app/exchange_rate/service.py`
 - `backend/app/exchange_rate/api.py`
-- `src/tools/exchange-rate/`
+- `backend/app/main.py`
+- `frontend/src/tools/exchange-rate/`
 
 ## 3. End-to-End Data Flow
 
@@ -137,7 +138,7 @@ Service 负责跨来源集成：V1 币种校验、五家银行并发聚合、完
 
 ### 4.7 FastAPI
 
-FastAPI 是 HTTP boundary，提供路由、Pydantic response schema、400 validation response、Decimal/datetime/enum serialization 和 CORS。默认只允许 `http://localhost:5173`，可用 `FRONTEND_ORIGIN` 替换为另一个明确 origin。
+`backend/app/main.py` 创建唯一的 FastAPI application，配置 application-wide CORS、production dependencies，并 include exchange-rate router。`backend/app/exchange_rate/api.py` 只保留 feature route、Pydantic response schema、400 validation response 和 Decimal/datetime/enum serialization。默认只允许 `http://localhost:5173`，可用 `FRONTEND_ORIGIN` 替换为另一个明确 origin。
 
 ### 4.8 Frontend
 
@@ -546,7 +547,7 @@ Vue 只调用自己的 FastAPI。这样可以：
 5. 在不重写 Vue 的情况下维护 upstream client；
 6. 给 frontend 一个稳定、字符串 Decimal 的统一 contract。
 
-Frontend API base 默认为 `http://127.0.0.1:8000`，只请求 `/api/exchange-rates/{code}`。
+Frontend 默认使用同源相对路径 `/api/exchange-rates/{code}`。Local Vite 只把 `/api` 代理到 `http://127.0.0.1:8000`；Vercel 将同一路径 rewrite 到 backend service。`VITE_API_BASE_URL` 仍可用于明确的开发或测试 override。
 
 ## 22. Frontend Presentation Rules
 
@@ -593,7 +594,10 @@ Frontend API base 默认为 `http://127.0.0.1:8000`，只请求 `/api/exchange-r
 ### Full regression
 
 ```powershell
-backend\.venv\Scripts\python.exe -m pytest backend/tests -v
+cd backend
+.\.venv\Scripts\python.exe -m pytest tests -v
+
+cd ..\frontend
 npm test
 npm run lint
 npm run type-check

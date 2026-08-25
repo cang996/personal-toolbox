@@ -1,12 +1,12 @@
 from datetime import datetime, tzinfo
 from decimal import Decimal
 
-from backend.app.exchange_rate.banks.abc import AbcRate
-from backend.app.exchange_rate.banks.boc import BocRate
-from backend.app.exchange_rate.banks.ccb import CcbRate
-from backend.app.exchange_rate.banks.cmb import CmbRate
-from backend.app.exchange_rate.banks.icbc import IcbcRate
-from backend.app.exchange_rate.models import BankExchangeRate, RateStatus
+from .banks.abc import AbcRate
+from .banks.boc import BocRate
+from .banks.ccb import CcbRate
+from .banks.cmb import CmbRate
+from .banks.icbc import IcbcRate
+from .models import BankExchangeRate, RateStatus
 
 
 def map_boc_rate(

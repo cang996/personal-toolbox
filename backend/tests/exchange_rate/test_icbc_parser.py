@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from backend.app.exchange_rate.banks.icbc import parse_icbc_rates
+from app.exchange_rate.banks.icbc import parse_icbc_rates
 
 
 FIXTURE_PATH = Path(__file__).parent / "fixtures" / "icbc_rates.json"
