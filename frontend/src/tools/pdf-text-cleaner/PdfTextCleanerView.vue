@@ -111,7 +111,7 @@ textarea:focus-visible { border-color: var(--color-accent); }
 .checkbox-label { display: inline-flex; gap: var(--space-2); align-items: center; cursor: pointer; }
 button { min-height: var(--control-height); border: 1px solid var(--color-border-subtle); border-radius: var(--radius-control); background: var(--color-surface); padding: 0.55rem 0.85rem; color: var(--color-text-primary); font-weight: 700; cursor: pointer; }
 button:hover { border-color: var(--color-accent); background: color-mix(in srgb, var(--color-accent) 8%, var(--color-surface)); }
-.primary-action { border-color: var(--color-accent); background: var(--color-accent); color: #fff; }
+.primary-action { border-color: var(--color-accent); background: var(--color-accent); color: var(--color-accent-contrast); }
 .primary-action:hover { border-color: var(--color-accent-hover); background: var(--color-accent-hover); }
 .status-message { color: var(--color-text-muted); }
 .state-empty, .state-copy-error { color: var(--color-danger); }

@@ -30,4 +30,11 @@ describe('TextCleanerHomeView', () => {
     expect(wrapper.text()).toContain('Markdown 格式清理')
     expect(wrapper.find('a[href="/tools/text-cleaner/markdown"]').exists()).toBe(true)
   })
+
+  it('does not show redundant availability badges', () => {
+    const wrapper = mountView()
+
+    expect(wrapper.text()).not.toContain('可用')
+    expect(wrapper.find('.status-available').exists()).toBe(false)
+  })
 })

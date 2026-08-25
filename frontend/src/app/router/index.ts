@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
+import { installRecentToolTracking } from '../recentTool'
 import { exchangeRateTool, textCleanerTool, textCompareTool } from '../tools'
 
 const router = createRouter({
@@ -42,5 +43,7 @@ const router = createRouter({
     },
   ],
 })
+
+installRecentToolTracking(router)
 
 export default router
