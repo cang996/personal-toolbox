@@ -15,6 +15,15 @@ $env:CURRENCYBEACON_API_KEY = "your-key"
 .\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
+Alternatively, from the repository root:
+
+```powershell
+backend\.venv\Scripts\python.exe -m uvicorn app.main:app --app-dir backend --reload --host 127.0.0.1 --port 8000
+```
+
+Do not use `backend.app.exchange_rate.api:app`: `exchange_rate/api.py` exposes an
+`APIRouter`, while `app/main.py` owns the ASGI application.
+
 Query `GET http://127.0.0.1:8000/api/exchange-rates/AUD`.
 
 Run the full backend suite from the same directory:
