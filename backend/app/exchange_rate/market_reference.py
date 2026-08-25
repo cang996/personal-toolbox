@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
 
-from backend.app.exchange_rate.models import RateStatus
+from .models import RateStatus
 
 
 @dataclass(frozen=True)

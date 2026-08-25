@@ -1,37 +1,32 @@
 # Exchange-rate backend
 
-## Setup
+`backend/` is an independent Python service root. The top-level FastAPI application
+is `app.main:app`; exchange-rate routing and domain logic remain under
+`app/exchange_rate/`.
 
-From the repository root:
+## Setup and run
 
-```powershell
-backend\.venv\Scripts\python.exe -m pip install -r backend\requirements.txt
-```
-
-Set the CurrencyBeacon credential in the backend process environment. The key is
-used only as a Bearer token by the backend and is never returned by the API:
+From `backend/`:
 
 ```powershell
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
 $env:CURRENCYBEACON_API_KEY = "your-key"
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-Start the API from the repository root:
+Query `GET http://127.0.0.1:8000/api/exchange-rates/AUD`.
+
+Run the full backend suite from the same directory:
 
 ```powershell
-backend\.venv\Scripts\python.exe -m uvicorn backend.app.exchange_rate.api:app --reload
-```
-
-Query a supported V1 currency:
-
-```text
-GET http://127.0.0.1:8000/api/exchange-rates/AUD
+.\.venv\Scripts\python.exe -m pytest tests -v
 ```
 
 The response combines CurrencyBeacon mid-market reference data with BOC, ICBC,
-CCB, ABC, and CMB retail bank quotes. The market reference is not a bank deal
-price or a People's Bank of China official midpoint. CurrencyBeacon data uses a
-lazy one-hour in-memory cache; it is fetched only on demand and the cache is lost
-when the process restarts. There is currently no database.
-
-Development CORS allows `http://localhost:5173`. Set `FRONTEND_ORIGIN` to one
-explicit origin for another environment.
+CCB, ABC, and CMB retail bank quotes. The market reference is not a bank deal price
+or a People's Bank of China official midpoint. CurrencyBeacon uses a lazy one-hour
+in-memory cache, fetched only on demand and lost when the process restarts; there is
+currently no database. Development CORS allows
+`http://localhost:5173`; `FRONTEND_ORIGIN` may replace it with one explicit origin.
+Deployed browser traffic normally remains same-origin through `/api/*` routing.

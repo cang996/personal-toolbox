@@ -3,10 +3,10 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
-from backend.app.exchange_rate.bank_cache import BankSnapshotCache
-from backend.app.exchange_rate.market_reference import MarketReferenceRate
-from backend.app.exchange_rate.models import BankExchangeRate, RateStatus
-from backend.app.exchange_rate.service import ExchangeRateService
+from app.exchange_rate.bank_cache import BankSnapshotCache
+from app.exchange_rate.market_reference import MarketReferenceRate
+from app.exchange_rate.models import BankExchangeRate, RateStatus
+from app.exchange_rate.service import ExchangeRateService
 
 
 NOW = datetime(2026, 8, 24, 6, 0, tzinfo=UTC)
