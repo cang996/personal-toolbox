@@ -22,6 +22,15 @@ python -m venv .venv
 .\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
+When staying at the repository root, the equivalent command is:
+
+```powershell
+backend\.venv\Scripts\python.exe -m uvicorn app.main:app --app-dir backend --reload --host 127.0.0.1 --port 8000
+```
+
+`app.main:app` is the only ASGI application entrypoint. The exchange-rate API
+module exposes a feature router, not a standalone application.
+
 In another terminal, start the frontend:
 
 ```powershell

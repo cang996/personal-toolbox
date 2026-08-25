@@ -299,7 +299,7 @@ textarea:focus-visible { border-color: var(--color-accent); }
 button { min-height: var(--control-height); border: 1px solid var(--color-border-subtle); border-radius: var(--radius-control); background: var(--color-surface); padding: 0.55rem 0.85rem; color: var(--color-text-primary); font-weight: 700; cursor: pointer; transition: background var(--transition-fast) ease, border-color var(--transition-fast) ease, color var(--transition-fast) ease; }
 button:hover, button.active { border-color: var(--color-accent); background: color-mix(in srgb, var(--color-accent) 8%, var(--color-surface)); }
 button:active { border-color: var(--color-accent-active); }
-.primary-action, .back-to-edit { border-color: var(--color-accent); background: var(--color-accent); color: #ffffff; }
+.primary-action, .back-to-edit { border-color: var(--color-accent); background: var(--color-accent); color: var(--color-accent-contrast); }
 .primary-action:hover, .back-to-edit:hover { border-color: var(--color-accent-hover); background: var(--color-accent-hover); }
 .state-empty, .state-error { color: var(--color-danger); }
 .state-same { color: var(--color-success); }

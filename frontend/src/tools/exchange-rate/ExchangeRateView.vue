@@ -250,7 +250,7 @@ button {
 .page-error button {
   border-color: var(--color-accent);
   background: var(--color-accent);
-  color: #fff;
+  color: var(--color-accent-contrast);
 }
 
 .refresh-button:hover,
@@ -294,7 +294,11 @@ button {
   display: grid;
   gap: var(--space-4);
   border: 1px solid color-mix(in srgb, var(--color-accent) 25%, var(--color-border-subtle));
-  background: linear-gradient(145deg, color-mix(in srgb, var(--color-accent) 7%, #fff), #fff 62%);
+  background: linear-gradient(
+    145deg,
+    color-mix(in srgb, var(--color-accent) 7%, var(--color-surface)),
+    var(--color-surface) 62%
+  );
 }
 
 .eyebrow {
@@ -315,7 +319,7 @@ button {
 }
 
 .reference-badge {
-  background: color-mix(in srgb, var(--color-accent) 9%, #fff);
+  background: color-mix(in srgb, var(--color-accent) 9%, var(--color-surface));
   color: var(--color-accent-active);
 }
 
@@ -413,7 +417,7 @@ td {
 }
 
 thead th {
-  background: color-mix(in srgb, var(--color-page-background) 72%, #fff);
+  background: color-mix(in srgb, var(--color-page-background) 72%, var(--color-surface));
   color: var(--color-text-secondary);
   font-size: 0.82rem;
   font-weight: 700;
@@ -430,7 +434,7 @@ th:first-child {
 
 thead th:first-child {
   z-index: 2;
-  background: color-mix(in srgb, var(--color-page-background) 72%, #fff);
+  background: color-mix(in srgb, var(--color-page-background) 72%, var(--color-surface));
 }
 
 tbody tr:last-child th,
@@ -444,7 +448,7 @@ tbody tr:last-child td {
 }
 
 .status-label-available {
-  background: color-mix(in srgb, var(--color-success) 9%, #fff);
+  background: color-mix(in srgb, var(--color-success) 9%, var(--color-surface));
   color: var(--color-success);
 }
 
