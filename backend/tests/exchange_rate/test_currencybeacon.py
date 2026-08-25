@@ -4,15 +4,15 @@ from decimal import Decimal
 import httpx
 import pytest
 
-from backend.app.exchange_rate.currencybeacon import (
+from app.exchange_rate.currencybeacon import (
     CURRENCYBEACON_LATEST_URL,
     MARKET_REFERENCE_CACHE_TTL,
     CurrencyBeaconCache,
     CurrencyBeaconClient,
     CurrencyBeaconConfigurationError,
 )
-from backend.app.exchange_rate.models import RateStatus
-from backend.app.exchange_rate.policies import PRODUCT_TARGET_CURRENCIES
+from app.exchange_rate.models import RateStatus
+from app.exchange_rate.policies import PRODUCT_TARGET_CURRENCIES
 
 
 NOW = datetime(2026, 8, 24, 4, 0, tzinfo=UTC)

@@ -15,10 +15,11 @@
 * Use Vue 3, TypeScript, Vite, and Vue Router.
 * Use Composition API and `<script setup lang="ts">`; do not use Vue 2 syntax or the Options API.
 * Do not introduce React, Nuxt, Pinia, Tailwind CSS, or a large UI framework unless explicitly approved.
-* Each tool must remain an independent feature module under `src/tools`.
-* Tool modules may import from `src/shared`; `src/shared` must never import from a specific tool module.
+* Frontend production code and tests live under `frontend/src/`; frontend package and build configuration live under `frontend/`.
+* Each tool must remain an independent feature module under `frontend/src/tools`.
+* Tool modules may import from `frontend/src/shared`; `frontend/src/shared` must never import from a specific tool module.
 * One tool module must never import directly from another tool module.
-* Application-level layout, routing, and tool metadata belong under `src/app`.
+* Application-level layout, routing, and tool metadata belong under `frontend/src/app`.
 
 ### Shared code and components
 

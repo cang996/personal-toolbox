@@ -2,20 +2,20 @@ import ssl
 
 import httpx
 
-from backend.app.exchange_rate.banks.abc import parse_abc_rates
-from backend.app.exchange_rate.banks.boc import parse_boc_rates
-from backend.app.exchange_rate.banks.ccb import parse_ccb_rates
-from backend.app.exchange_rate.banks.cmb import parse_cmb_rates
-from backend.app.exchange_rate.banks.icbc import parse_icbc_rates
-from backend.app.exchange_rate.mappers import (
+from .banks.abc import parse_abc_rates
+from .banks.boc import parse_boc_rates
+from .banks.ccb import parse_ccb_rates
+from .banks.cmb import parse_cmb_rates
+from .banks.icbc import parse_icbc_rates
+from .mappers import (
     map_abc_rate,
     map_boc_rate,
     map_ccb_rate,
     map_cmb_rate,
     map_icbc_rate,
 )
-from backend.app.exchange_rate.models import BankExchangeRate
-from backend.app.exchange_rate.policies import CHINA_SOURCE_TIMEZONE
+from .models import BankExchangeRate
+from .policies import CHINA_SOURCE_TIMEZONE
 
 
 USER_AGENT = "personal-toolbox/1.0"

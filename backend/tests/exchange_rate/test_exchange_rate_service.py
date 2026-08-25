@@ -1,9 +1,9 @@
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
-from backend.app.exchange_rate.market_reference import MarketReferenceRate
-from backend.app.exchange_rate.models import BankExchangeRate, RateStatus
-from backend.app.exchange_rate.service import ExchangeRateService, apply_freshness
+from app.exchange_rate.market_reference import MarketReferenceRate
+from app.exchange_rate.models import BankExchangeRate, RateStatus
+from app.exchange_rate.service import ExchangeRateService, apply_freshness
 
 
 NOW = datetime(2026, 8, 24, 12, 0, tzinfo=UTC)
