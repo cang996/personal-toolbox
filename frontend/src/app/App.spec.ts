@@ -1,9 +1,11 @@
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createRouter, createWebHistory } from 'vue-router'
 
 import App from '../App.vue'
-import { textCleanerTool, textCompareTool, tools } from './tools'
+import { recordRecentToolPath } from './recentTool'
+import { exchangeRateTool, textCleanerTool, textCompareTool, tools } from './tools'
+import { setTheme } from '@/shared/theme/useTheme'
 
 type MountedApp = Awaited<ReturnType<typeof mountAt>>
 
@@ -121,11 +123,58 @@ describe('tool registry', () => {
 })
 
 describe('App', () => {
+  beforeEach(() => {
+    window.localStorage.clear()
+    setTheme('light')
+  })
+
   it('mounts the application shell', async () => {
     const wrapper = await mountAt('/')
 
     expect(wrapper.text()).toContain('个人工具箱')
-    expect(wrapper.text()).toContain('首页')
+    expect(wrapper.text()).toContain('UTILITY TERMINAL / PT-01')
+    expect(wrapper.text()).toContain('LIGHT')
+    expect(wrapper.text()).toContain('DARK')
+  })
+
+  it('shows the safe GitHub Profile action on Home instead of a redundant Home link', async () => {
+    const home = await mountAt('/')
+    const githubLink = home.find('nav a.github-link')
+
+    expect(githubLink.exists()).toBe(true)
+    expect(githubLink.text()).toContain('GITHUB')
+    expect(githubLink.text()).toContain('PROFILE ↗')
+    expect(githubLink.attributes('href')).toBe('https://github.com/cang996')
+    expect(githubLink.attributes('target')).toBe('_blank')
+    expect(githubLink.attributes('rel')).toBe('noopener noreferrer')
+    expect(githubLink.classes()).toContain('header-action')
+    expect(home.find('nav.header-action-slot').exists()).toBe(true)
+    expect(home.find('nav a.home-link').exists()).toBe(false)
+    expect(home.find('nav').text()).not.toContain('首页')
+  })
+
+  it('keeps the Home navigation action on tool routes', async () => {
+    const tool = await mountAt(textCompareTool.path)
+    const homeLink = tool.find('nav a.home-link')
+
+    expect(homeLink.exists()).toBe(true)
+    expect(homeLink.attributes('href')).toBe('/')
+    expect(homeLink.text()).toContain('INDEX')
+    expect(homeLink.text()).toContain('首页')
+    expect(homeLink.classes()).toContain('header-action')
+    expect(tool.find('nav.header-action-slot').exists()).toBe(true)
+    expect(tool.find('nav a.github-link').exists()).toBe(false)
+  })
+
+  it('switches the global theme from the application header', async () => {
+    const wrapper = await mountAt('/')
+    const darkButton = wrapper.findAll('button').find((button) => button.text() === 'DARK')
+
+    expect(darkButton).toBeDefined()
+    await darkButton?.trigger('click')
+
+    expect(document.documentElement.dataset.theme).toBe('dark')
+    expect(darkButton?.attributes('aria-pressed')).toBe('true')
   })
 
   it('renders the text compare tool on the home page', async () => {
@@ -145,12 +194,76 @@ describe('App', () => {
     expect(home.text()).not.toContain('PDF 文本清理')
   })
 
+  it('renders compact whole-card routes without a module-count summary', async () => {
+    const home = await mountAt('/')
+
+    expect(home.text()).not.toContain('MODULES AVAILABLE')
+    const cards = home.findAll('a.tool-card')
+    expect(cards).toHaveLength(tools.length)
+    tools.forEach((tool, index) => {
+      expect(cards[index]?.attributes('href')).toBe(tool.path)
+      expect(cards[index]?.text()).toContain('进入模块')
+    })
+    expect(home.text()).not.toContain('快速入口')
+  })
+
+  it('removes the large central toolbox Hero and keeps a compact terminal intro', async () => {
+    const home = await mountAt('/')
+    const intro = home.find('.terminal-intro')
+
+    expect(home.find('.hero').exists()).toBe(false)
+    expect(intro.exists()).toBe(true)
+    expect(intro.text()).toContain('PERSONAL TOOLBOX / PT-01')
+    expect(intro.text()).toContain('SYS.STATUS / ONLINE')
+    expect(intro.text()).toContain('日常任务的轻量处理终端')
+    expect(intro.text()).not.toContain('工具箱')
+    expect(intro.text()).not.toContain('聚合文本处理')
+    expect(intro.text()).not.toContain('MODULES AVAILABLE')
+  })
+
+  it('groups tools under their real product categories', async () => {
+    const home = await mountAt('/')
+    const textTools = home.find('section[aria-labelledby="text-tools-heading"]')
+    const dataFinance = home.find('section[aria-labelledby="data-finance-heading"]')
+
+    expect(textTools.text()).toContain('01 / TEXT TOOLS')
+    expect(textTools.text()).toContain('文本工具')
+    expect(textTools.text()).toContain(textCompareTool.name)
+    expect(textTools.text()).toContain(textCleanerTool.name)
+    expect(textTools.text()).not.toContain(exchangeRateTool.name)
+    expect(textTools.find('.tool-grid').exists()).toBe(true)
+    expect(textTools.find('.tool-grid-single').exists()).toBe(false)
+    expect(textTools.findAll('a.tool-card')).toHaveLength(2)
+
+    expect(dataFinance.text()).toContain('02 / FINANCE TOOLS')
+    expect(dataFinance.text()).toContain('金融工具')
+    expect(dataFinance.text()).toContain(exchangeRateTool.name)
+    expect(dataFinance.text()).not.toContain(textCompareTool.name)
+    expect(dataFinance.find('.tool-grid.tool-grid-single').exists()).toBe(true)
+    expect(dataFinance.findAll('a.tool-card')).toHaveLength(1)
+  })
+
+  it('hides Last Used on first visit and shows the stored concrete tool route', async () => {
+    const firstVisit = await mountAt('/')
+    expect(firstVisit.find('.last-used').exists()).toBe(false)
+
+    firstVisit.unmount()
+    recordRecentToolPath('/tools/text-cleaner/markdown', new Date('2026-08-26T00:30:00'))
+    const returningVisit = await mountAt('/')
+
+    expect(returningVisit.text()).toContain('LAST USED / 最近使用')
+    expect(returningVisit.text()).toContain('Markdown 格式清理')
+    expect(returningVisit.find('.last-used').attributes('href')).toBe(
+      '/tools/text-cleaner/markdown',
+    )
+  })
+
   it('renders the text cleaner entry page and its PDF route', async () => {
     const entry = await mountAt(textCleanerTool.path)
 
     expect(entry.text()).toContain('PDF 复制文本清理')
     expect(entry.text()).toContain('Markdown 格式清理')
-    expect(entry.text()).toContain('可用')
+    expect(entry.text()).not.toContain('可用')
     expect(entry.find('a[href="/tools/text-cleaner/pdf"]').exists()).toBe(true)
     expect(entry.find('a[href="/tools/text-cleaner/markdown"]').exists()).toBe(true)
 
