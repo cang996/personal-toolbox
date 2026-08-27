@@ -4,11 +4,14 @@ import { computed, ref, watch } from 'vue'
 import ToolPageLayout from '@/shared/components/ToolPageLayout.vue'
 import { countCharacters, countLines } from '@/shared/text/textStatistics'
 
+import { normalizeChinesePublicationText } from './chinesePublicationStandard'
 import { normalizeText } from './textNormalizer'
 
 type NormalizerState = 'idle' | 'empty' | 'success' | 'copy-success' | 'copy-error'
+type NormalizerMode = 'custom' | 'chinese-publication'
 
 const inputText = ref('')
+const mode = ref<NormalizerMode>('custom')
 const cleanCopyResidue = ref(false)
 const normalizeWhitespace = ref(false)
 const addCjkLatinSpacing = ref(false)
@@ -28,6 +31,7 @@ const outputLineCount = computed(() => countLines(result.value))
 watch(
   [
     inputText,
+    mode,
     cleanCopyResidue,
     normalizeWhitespace,
     addCjkLatinSpacing,
@@ -46,7 +50,11 @@ function runNormalizer() {
     return
   }
 
-  result.value = normalizeText(inputText.value, {
+  const modeResult =
+    mode.value === 'chinese-publication'
+      ? normalizeChinesePublicationText(inputText.value)
+      : inputText.value
+  result.value = normalizeText(modeResult, {
     cleanCopyResidue: cleanCopyResidue.value,
     normalizeWhitespace: normalizeWhitespace.value,
     addCjkLatinSpacing: addCjkLatinSpacing.value,
@@ -60,6 +68,7 @@ function runNormalizer() {
 function clearAll() {
   inputText.value = ''
   result.value = ''
+  mode.value = 'custom'
   cleanCopyResidue.value = false
   normalizeWhitespace.value = false
   addCjkLatinSpacing.value = false
@@ -114,7 +123,32 @@ function invalidateResult() {
         </section>
       </div>
 
-      <section class="controls" aria-label="规范化选项和操作">
+      <section class="mode-section" aria-labelledby="normalizer-mode-heading">
+        <div class="section-heading">
+          <h2 id="normalizer-mode-heading">处理模式</h2>
+        </div>
+
+        <div class="mode-options">
+          <label class="mode-option">
+            <span class="mode-choice"><input v-model="mode" type="radio" value="custom" />自定义</span>
+            <span class="mode-description">仅执行下方选择的个人格式偏好。</span>
+          </label>
+
+          <label class="mode-option">
+            <span class="mode-choice"><input v-model="mode" type="radio" value="chinese-publication" />中文出版规范</span>
+            <span class="mode-description"><strong>CY/T 154—2017 · 纯文本子集</strong><br />按《中文出版物夹用英文的编辑规范》中可由纯文本安全判断的规则处理。<br />不检查字体、字号、换行排版或页面效果。</span>
+          </label>
+        </div>
+
+        <p class="standard-note">标准允许根据排版效果决定中英文之间是否留空格；本模式不强制。如果你偏好留空格，可继续开启“添加中英文/数字间距”。</p>
+      </section>
+
+      <section class="controls" aria-labelledby="personal-preferences-heading">
+        <div class="section-heading">
+          <h2 id="personal-preferences-heading">个人格式偏好</h2>
+          <p>可单独使用，也可以叠加在中文出版规范之后。</p>
+        </div>
+
         <div class="options">
           <div class="option-item">
             <label class="checkbox-label"><input v-model="cleanCopyResidue" type="checkbox" />清理复制残留字符</label>
@@ -163,7 +197,17 @@ function invalidateResult() {
 label { color: var(--color-text-primary); font-weight: 700; }
 textarea { min-width: 0; min-height: 20rem; resize: vertical; border: 1px solid var(--color-border-subtle); border-radius: var(--radius-control); background: var(--color-surface); padding: 0.875rem; color: var(--color-text-primary); line-height: 1.6; overflow-wrap: anywhere; white-space: pre-wrap; }
 textarea:focus-visible { border-color: var(--color-accent); }
-.controls { display: grid; gap: var(--space-4); }
+.mode-section, .controls { display: grid; gap: var(--space-4); }
+.mode-section { border-top: 1px solid var(--color-border-subtle); border-bottom: 1px solid var(--color-border-subtle); padding-block: var(--space-4); }
+.section-heading { display: grid; gap: var(--space-1); }
+.section-heading h2 { color: var(--color-text-primary); font-size: 1rem; }
+.section-heading p, .mode-description, .standard-note { color: var(--color-text-muted); font-size: 0.8125rem; font-weight: 400; line-height: 1.5; }
+.mode-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3) var(--space-4); }
+.mode-option { display: grid; gap: var(--space-1); min-width: 0; align-content: start; cursor: pointer; }
+.mode-choice { display: inline-flex; gap: var(--space-2); align-items: center; }
+.mode-description { padding-left: calc(1rem + var(--space-2)); overflow-wrap: anywhere; }
+.mode-description strong { color: var(--color-text-secondary); font-weight: 700; }
+.standard-note { max-width: 72rem; }
 .options { display: grid; grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr)); gap: var(--space-3) var(--space-4); min-width: 0; }
 .option-item { display: grid; gap: var(--space-1); min-width: 0; align-content: start; }
 .checkbox-label { display: inline-flex; gap: var(--space-2); align-items: center; cursor: pointer; }
@@ -177,5 +221,5 @@ button:disabled { cursor: not-allowed; opacity: 0.55; }
 .status-message { color: var(--color-text-muted); }
 .state-empty, .state-copy-error { color: var(--color-danger); }
 .state-success, .state-copy-success { color: var(--color-success); }
-@media (max-width: 760px) { .content-grid, .options { grid-template-columns: 1fr; } textarea { min-height: 14rem; } }
+@media (max-width: 760px) { .content-grid, .mode-options, .options { grid-template-columns: 1fr; } textarea { min-height: 14rem; } }
 </style>

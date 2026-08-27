@@ -142,7 +142,12 @@ textarea string + local option refs
 
 ## 9. Text Normalizer
 
-### 9.1 Contract and options
+### 9.1 Modes and personal options
+
+页面提供两个处理模式，默认是 `custom`：
+
+- **自定义**：只执行用户勾选的个人格式偏好。
+- **中文出版规范**：执行 `CY/T 154—2017 · 纯文本子集`，随后再叠加用户勾选的个人格式偏好。切换模式不会自动改变个人选项。
 
 `normalizeText(input, options)` 是同步、确定性的普通文本转换。五个页面选项全部默认关闭：
 
@@ -164,17 +169,42 @@ Hello , world !       -> Hello, world!
 A   B                  -> A B
 ```
 
-### 9.2 Pipeline and protected fragments
+### 9.2 CY/T 154—2017 pure-text subset
 
-真实执行顺序为：newline normalization → leading BOM removal → optional copy residue → optional full-width alphanumeric → optional ordinary whitespace → deterministic numeric punctuation spacing → protected-fragment segmentation → remaining punctuation spacing → Han/Latin-number spacing → segment assembly。
+中文出版规范模式依据新闻出版行业标准 [CY/T 154—2017《中文出版物夹用英文的编辑规范》](https://www.nppa.gov.cn/xxgk/fdzdgknr/hybz/202210/P020221004608768453140.pdf)。这是国家新闻出版署提供的官方标准文件；本工具不声称完整检查或保证出版物符合该标准，只实现适用于纯文本且能安全自动判断的子集：
+
+- **§4 中文外层、英文内部原则**：存在明确中文外层语境时，保护区外的 ASCII `, . ; : ! ?` 可转换为中文全角标点；清晰 English island 内部继续使用英文标点。纯英文行保持原样，有歧义时不改。
+- **§5 主要标点**：支持中文句子夹英文单词或词组时的外层逗号、句号、分号、冒号、问号和叹号；不处理需理解语义的顿号、连接号、破折号或省略号规则。
+- **§8.1 中英文间空格**：标准允许根据字体、字符间距和排版视觉效果决定是否留空格，因此规范模式不会强制添加或删除汉字与英文之间的空格。偏好留空格时可另外开启“添加中英文/数字间距”。
+- **§8.2 中文标点邻接英文**：删除英文内容与相邻中文标点之间的额外 ASCII space/tab，例如 `Python ，Java` → `Python，Java`、`（ Python ）` → `（Python）`。
+- **§12.1.1 半角数字**：U+FF10–U+FF19 全角数字转换为 ASCII digits；全角拉丁字母仅由个人“全角字母数字转半角”选项处理。
+
+中文引号或全角圆括号中明确不含汉字且包含 Latin 字母的内容会作为 English island，例如 `“The debt, if any, is to be written off.”` 和 `（deoxyribonucleic acid, DNA）` 内部标点保持英文形式。URL、email、Windows/POSIX path、日期、compact version、小数、金额、时间/比例和有限 technical token 同样受到保护，中文外层标点仍可规范化。
+
+示例：
+
+```text
+这是测试,继续.                              -> 这是测试，继续。
+我喜欢 Python.                              -> 我喜欢 Python。
+访问https://example.com/a?x=1,然后继续.     -> 访问https://example.com/a?x=1，然后继续。
+脱氧核糖核酸（deoxyribonucleic acid, DNA）很重要.
+                                             -> 脱氧核糖核酸（deoxyribonucleic acid, DNA）很重要。
+２０２６ / ＡＢＣ                          -> 2026 / ＡＢＣ
+```
+
+### 9.3 Pipeline and protected fragments
+
+页面真实执行顺序为：raw input → optional `normalizeChinesePublicationText()` → existing `normalizeText(input, personalOptions)` → output。标准规则先执行，个人偏好后叠加；标准模式不是自动勾选五项个人选项。
+
+个人转换层内部顺序仍为：newline normalization → leading BOM removal → optional copy residue → optional full-width alphanumeric → optional ordinary whitespace → deterministic numeric punctuation spacing → protected-fragment segmentation → remaining punctuation spacing → Han/Latin-number spacing → segment assembly。
 
 HTTP/HTTPS URL、email、Windows/POSIX path、日期、compact version、小数和有限的 compact technical token 会形成轻量 `{ text, protected }` segment。标点清理跳过其内部内容；Han spacing 仍检查 segment 边界，因此 `使用https://example.com测试` 可变为 `使用 https://example.com 测试`，URL 本身不改变。实现没有通用 parser、固定 placeholder 或跨工具 rule engine。
 
-### 9.3 Statistics and non-goals
+### 9.4 Statistics and non-goals
 
 页面直接复用 `shared/text/textStatistics.ts` 显示输入和当前有效输出的 Unicode code-point 字符数与逻辑行数。输入或任一选项变化会清空旧结果并隐藏旧统计。
 
-Normalizer 不做 PDF paragraph recovery、Markdown syntax cleanup、语言/句子检测、标点 glyph 转换、全局 NFKC、全角 symbol 转换、空行压缩、代码/表格格式化、上传或持久化。protected-fragment 识别是有限规则，不承诺解析含 Han 的国际化 URL、所有 shell command 或任意编程语言。
+标准模式不检查字体、字号、换行排版、断词转行、页面布局或英文书刊名斜体；也不推断大小写、proper noun、人名缩略、并列项目顿号、数字千分位、单位、dash 或 ellipsis 语义。Normalizer 仍不做 PDF paragraph recovery、Markdown syntax cleanup、全局 NFKC、全角 symbol 转换、空行压缩、代码/表格格式化、上传或持久化。protected-fragment 和 English-island 识别是有限规则，不承诺解析含 Han 的国际化 URL、所有 shell command、任意编程语言或需要自然语言理解的歧义结构。
 
 ## 10. Shared Logic
 
@@ -186,7 +216,7 @@ Normalizer 不做 PDF paragraph recovery、Markdown syntax cleanup、语言/句�
 | --- | --- | --- | --- |
 | PDF | pasted text string | `removeCjkLatinSpaces: boolean`; optional `cleanCopyResidue: boolean` | cleaned plain-text string |
 | Markdown | Markdown string | `preserveLinkUrls: boolean`; optional `numberHeadings: boolean`; optional `cleanCopyResidue: boolean` | cleaned plain-text string |
-| Normalizer | plain-text string | five required boolean options, all default off in the view | normalized plain-text string |
+| Normalizer | plain-text string | `custom`/`chinese-publication` mode; five personal boolean options, all default off | normalized plain-text string |
 
 函数是同步、确定性、无副作用的纯转换；空字符串都得到空字符串。页面负责拒绝只有空白的交互输入，但 utility 本身仍可直接测试。
 
@@ -202,7 +232,8 @@ Normalizer 不做 PDF paragraph recovery、Markdown syntax cleanup、语言/句�
 - `markdownTextCleaner.spec.ts` 覆盖 block/inline 规则、转义保护、畸形输入、URL 圆括号、严格 fence 边界、代码内空白、复制残留字符、已有标题编号 context，以及标题默认不编号和原六级算法。
 - `MarkdownTextCleanerView.spec.ts` 覆盖执行、结果失效、三个选项的默认/清空行为、复制残留开关、编号切换、输入/结果统计和剪贴板反馈。
 - `textNormalizer.spec.ts` 覆盖默认保真、换行/BOM、五项独立规则、技术片段保护、组合行为与 idempotence。
-- `TextNormalizerView.spec.ts` 覆盖五项默认值与 wiring、显式执行、空输入、结果失效、清空、复制和统计。
+- `chinesePublicationStandard.spec.ts` 覆盖中文外层标点、English islands、技术片段、§8.1/§8.2、半角数字、组合顺序与 idempotence。
+- `TextNormalizerView.spec.ts` 覆盖模式边界、五项默认值与 wiring、标准/个人组合、显式执行、空输入、结果失效、清空、复制和统计。
 - 应用、入口和 recent-tool tests 保护 Normalizer route、第三张卡、非顶层注册及最近使用 metadata。
 - `shared/text/textStatistics.spec.ts` 固定 Unicode code point 字符数以及 LF/CRLF/CR、空文本和末尾换行的行数语义。
 - `shared/text/copyResidue.spec.ts` 固定四项复制残留字符 mapping，并保护 ASCII literal hyphen。

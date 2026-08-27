@@ -19,6 +19,12 @@ function checkboxByLabel(wrapper: ReturnType<typeof mountView>, label: string) {
   return option.find('input[type="checkbox"]')
 }
 
+function radioByLabel(wrapper: ReturnType<typeof mountView>, label: string) {
+  const option = wrapper.findAll('label').find((candidate) => candidate.text().includes(label))
+  if (!option) throw new Error(`Expected radio label: ${label}`)
+  return option.find('input[type="radio"]')
+}
+
 describe('TextNormalizerView', () => {
   beforeEach(() => {
     Object.assign(navigator, { clipboard: { writeText: vi.fn<(text: string) => Promise<void>>() } })
@@ -51,6 +57,59 @@ describe('TextNormalizerView', () => {
       '删除标点附近多余空格，并整理小数、百分比、金额等常见间距；不会转换中英文标点符号。',
       '例如 ＡＢＣ１２３ → ABC123；只转换全角字母和数字，中文标点保持不变。',
     ])
+  })
+
+  it('renders the custom and Chinese publication modes with their product boundaries', () => {
+    const wrapper = mountView()
+    const custom = radioByLabel(wrapper, '自定义')
+    const standard = radioByLabel(wrapper, '中文出版规范')
+
+    expect((custom.element as HTMLInputElement).checked).toBe(true)
+    expect((standard.element as HTMLInputElement).checked).toBe(false)
+    expect(wrapper.text()).toContain('CY/T 154—2017 · 纯文本子集')
+    expect(wrapper.text()).toContain('不检查字体、字号、换行排版或页面效果。')
+    expect(wrapper.text()).toContain('标准允许根据排版效果决定中英文之间是否留空格；本模式不强制。')
+    expect(wrapper.text()).toContain('可单独使用，也可以叠加在中文出版规范之后。')
+  })
+
+  it('runs the standard with personal options off and composes personal spacing afterward', async () => {
+    const wrapper = mountView()
+    const source = wrapper.find('#normalizer-source-text')
+    const standard = radioByLabel(wrapper, '中文出版规范')
+    const personalSpacing = checkboxByLabel(wrapper, '添加中英文/数字间距')
+
+    await source.setValue('中文Python ，版本２０２６.')
+    await standard.setValue(true)
+    expect(
+      wrapper.findAll('input[type="checkbox"]').every((checkbox) => !(checkbox.element as HTMLInputElement).checked),
+    ).toBe(true)
+
+    await buttonByText(wrapper, '开始规范化').trigger('click')
+    expect((wrapper.find('#normalized-text').element as HTMLTextAreaElement).value).toBe(
+      '中文Python，版本2026。',
+    )
+
+    await personalSpacing.setValue(true)
+    expect((wrapper.find('#normalized-text').element as HTMLTextAreaElement).value).toBe('')
+    await buttonByText(wrapper, '开始规范化').trigger('click')
+    expect((wrapper.find('#normalized-text').element as HTMLTextAreaElement).value).toBe(
+      '中文 Python，版本 2026。',
+    )
+  })
+
+  it('invalidates a current result when the mode changes without changing personal options', async () => {
+    const wrapper = mountView()
+    const cleanCopyResidue = checkboxByLabel(wrapper, '清理复制残留字符')
+    await wrapper.find('#normalizer-source-text').setValue('这是测试,继续.')
+    await cleanCopyResidue.setValue(true)
+    await buttonByText(wrapper, '开始规范化').trigger('click')
+
+    await radioByLabel(wrapper, '中文出版规范').setValue(true)
+
+    expect((wrapper.find('#normalized-text').element as HTMLTextAreaElement).value).toBe('')
+    expect(wrapper.find('[aria-label="规范化结果统计"]').exists()).toBe(false)
+    expect(wrapper.text()).toContain('输入或选项已变更，请重新开始规范化。')
+    expect((cleanCopyResidue.element as HTMLInputElement).checked).toBe(true)
   })
 
   it('rejects whitespace-only input and keeps copy disabled', async () => {
@@ -107,6 +166,7 @@ describe('TextNormalizerView', () => {
   it('clears both fields and resets all options to off', async () => {
     const wrapper = mountView()
     await wrapper.find('#normalizer-source-text').setValue('中文English')
+    await radioByLabel(wrapper, '中文出版规范').setValue(true)
     for (const checkbox of wrapper.findAll('input[type="checkbox"]')) await checkbox.setValue(true)
     await buttonByText(wrapper, '开始规范化').trigger('click')
     await buttonByText(wrapper, '清空').trigger('click')
@@ -116,6 +176,7 @@ describe('TextNormalizerView', () => {
     expect(
       wrapper.findAll('input[type="checkbox"]').every((checkbox) => !(checkbox.element as HTMLInputElement).checked),
     ).toBe(true)
+    expect((radioByLabel(wrapper, '自定义').element as HTMLInputElement).checked).toBe(true)
     expect(wrapper.find('[aria-label="规范化结果统计"]').exists()).toBe(false)
   })
 
