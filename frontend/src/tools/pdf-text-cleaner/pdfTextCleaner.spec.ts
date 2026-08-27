@@ -81,6 +81,63 @@ Android 和 Java API 的 版 本 。`
     )
   })
 
+  describe('paragraph recovery boundaries', () => {
+    it('merges wrapped Chinese prose while preserving blank and complete-sentence boundaries', () => {
+      expect(cleanPdfText('这是第一行，\n这是同一段第二行，\n这是同一段第三行。', removeCjkLatinSpaces)).toBe(
+        '这是第一行，这是同一段第二行，这是同一段第三行。',
+      )
+      expect(cleanPdfText('这是第一段。\n\n这是第二段。', removeCjkLatinSpaces)).toBe('这是第一段。\n\n这是第二段。')
+      expect(cleanPdfText('这是第一句话。\n这是第二句话。', removeCjkLatinSpaces)).toBe('这是第一句话。\n这是第二句话。')
+    })
+
+    it('merges wrapped English and mixed-language prose without treating it as a heading', () => {
+      expect(cleanPdfText('This is a sentence that was wrapped\nby the PDF layout.', removeCjkLatinSpaces)).toBe(
+        'This is a sentence that was wrapped by the PDF layout.',
+      )
+      expect(cleanPdfText('这个工具支持Vue 3和\nTypeScript projects.', removeCjkLatinSpaces)).toBe(
+        '这个工具支持Vue 3和TypeScript projects.',
+      )
+    })
+
+    it('keeps independent complete sentences even when the first sentence is long', () => {
+      const first = `This deliberately long sentence exceeds the old arbitrary length threshold while still ending as a complete independent sentence.`
+      const second = 'This is another complete sentence.'
+
+      expect(cleanPdfText(`${first}\n${second}`, removeCjkLatinSpaces)).toBe(`${first}\n${second}`)
+    })
+
+    it('protects only the heading-to-body boundary and merges wrapped body lines', () => {
+      expect(
+        cleanPdfText('Introduction\nThis is the first line of the paragraph\nand this is the continuation.', removeCjkLatinSpaces),
+      ).toBe('Introduction\nThis is the first line of the paragraph and this is the continuation.')
+      expect(cleanPdfText('项目背景\n这是正文第一行\n这是正文第二行', removeCjkLatinSpaces)).toBe(
+        '项目背景\n这是正文第一行这是正文第二行',
+      )
+      expect(cleanPdfText('项目背景\n正文第一行\n正文第二行', removeCjkLatinSpaces)).toBe('项目背景\n正文第一行正文第二行')
+    })
+
+    it('treats ambiguous short Chinese prose conservatively instead of forcing a heading', () => {
+      expect(cleanPdfText('这是正文\n下一行正文', removeCjkLatinSpaces)).toBe('这是正文下一行正文')
+    })
+
+    it('separates new list items and prose while merging clear list continuations', () => {
+      expect(cleanPdfText('1. First item\n2. Second item', removeCjkLatinSpaces)).toBe('1. First item\n2. Second item')
+      expect(cleanPdfText('1. First item\n   continuation of first item', removeCjkLatinSpaces)).toBe(
+        '1. First item continuation of first item',
+      )
+      expect(cleanPdfText('1. First item\nThis is a new paragraph.', removeCjkLatinSpaces)).toBe(
+        '1. First item\nThis is a new paragraph.',
+      )
+      expect(cleanPdfText('• 调试\n这是新段落。', removeCjkLatinSpaces)).toBe('• 调试\n这是新段落。')
+    })
+
+    it('keeps literal hyphenated line breaks without dehyphenating them', () => {
+      expect(cleanPdfText('environ-\nmental', removeCjkLatinSpaces)).toBe('environ-\nmental')
+      expect(cleanPdfText('well-\nknown', removeCjkLatinSpaces)).toBe('well-\nknown')
+      expect(cleanPdfText('state-of-the-\nart', removeCjkLatinSpaces)).toBe('state-of-the-\nart')
+    })
+  })
+
   describe('exploratory structure regressions', () => {
     it('keeps conservative English and Chinese headings separate from following prose', () => {
       expect(cleanPdfText('Introduction\nThis section explains the background of the project.\n\n项目背景\n本项目主要解决问题。', removeCjkLatinSpaces)).toBe(

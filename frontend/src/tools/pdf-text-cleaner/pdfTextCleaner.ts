@@ -7,6 +7,7 @@ const cjkPunctuation = '[\\u3000-\\u303f\\uff00-\\uffef]'
 const cjkToken = `(?:${cjkCharacter}|${cjkPunctuation})`
 const listStart = /^(?:[•●]\s*|[-*]\s+|\d+[.)]\s+|（\d+）\s*)/
 const technicalLineStart = /^(?:minSdk|compileSdk|targetSdk)\b/
+const standaloneTechnicalLine = /^[A-Z][A-Za-z]*(?:\.js)?\s+\d+(?:\.\d+)*$/
 const shortLabels = ['谁：', '什么：', '地点：', '原因：']
 const standaloneUrl = /^https?:\/\/\S+$/i
 const standaloneEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -16,16 +17,33 @@ const chineseNumberedHeading = /^(?:[一二三四五六七八九十]+、|（[一
 const codeStart = /^(?:(?:const|let|var|function|import|export)\b|[A-Za-z_$][\w$]*(?:\.[\w$]+)*\s*\()/
 const codeEnd = /^[)\]};,]+$/
 
-type LineType =
+type LineKind =
   | 'blank'
-  | 'numbered-heading'
-  | 'heading'
+  | 'prose'
+  | 'heading-strong'
+  | 'heading-weak-candidate'
+  | 'heading-weak'
   | 'label-heading'
   | 'list-item'
-  | 'standalone-url'
-  | 'standalone-email'
-  | 'code-line'
-  | 'prose'
+  | 'url'
+  | 'email'
+  | 'code'
+  | 'symbol'
+  | 'technical'
+
+interface LineInfo {
+  text: string
+  trimmed: string
+  kind: LineKind
+  indent: number
+}
+
+type BoundaryDecision = 'keep-break' | 'merge-with-space' | 'merge-without-space'
+
+interface AssembledLine {
+  text: string
+  kind: LineKind
+}
 
 function isCjkToken(value: string): boolean {
   return new RegExp(`^${cjkToken}$`).test(value)
@@ -55,56 +73,106 @@ function isLabelHeading(line: string): boolean {
   )
 }
 
-function isCodeLine(line: string, sourceLine: string, inCodeBlock: boolean): boolean {
+function isCodeLine(line: string, sourceLine: string): boolean {
   if (standaloneCode.test(line) || codeStart.test(line) || codeEnd.test(line)) {
     return true
   }
 
-  if (!inCodeBlock) {
+  if (getIndent(sourceLine) < 2) {
     return false
   }
 
-  return (
-    /^\s+/.test(sourceLine) ||
-    /^(?:["'].*[;)]|[A-Za-z_$][\w$]*[),;]?)$/.test(line)
-  )
+  return /^(?:["'].*[;),]?|[A-Za-z_$][\w$]*(?:\s*:\s*.+[,]?|[),;]?))$/.test(line)
 }
 
-function isLikelyHeading(line: string, nextLine: string | undefined): boolean {
-  if (!nextLine || line.length > 40 || /[.!?。！？；;]$/.test(line)) {
-    return false
-  }
-
-  const next = nextLine.trim()
-  if (!next || isListItem(next) || standaloneUrl.test(next) || standaloneEmail.test(next) || standaloneCode.test(next)) {
-    return false
-  }
-
+function isWeakHeadingCandidate(line: string): boolean {
   return (
     (/^[\u3400-\u4dbf\u4e00-\u9fff]{2,8}$/.test(line) || /^[A-Z][A-Za-z0-9&' -]{0,39}$/.test(line)) &&
+    !/[.!?。！？；;]$/.test(line) &&
     !technicalLineStart.test(line)
   )
 }
 
-function classifyLine(line: string, nextLine: string | undefined, sourceLine: string, inCodeBlock: boolean): LineType {
-  if (!line) return 'blank'
-  if (isNumberedHeading(line)) return 'numbered-heading'
-  if (isLabelHeading(line)) return 'label-heading'
-  if (standaloneUrl.test(line)) return 'standalone-url'
-  if (standaloneEmail.test(line)) return 'standalone-email'
-  if (isCodeLine(line, sourceLine, inCodeBlock)) return 'code-line'
-  if (isListItem(line)) return 'list-item'
-  if (isLikelyHeading(line, nextLine)) return 'heading'
-  return 'prose'
+function getIndent(sourceLine: string): number {
+  return (sourceLine.match(/^[ \t]*/)?.[0] ?? '').replace(/\t/g, '    ').length
 }
 
-function isStandaloneStructure(type: LineType): boolean {
+function classifyLine(sourceLine: string): LineInfo {
+  const trimmed = sourceLine.trim()
+  let kind: LineKind = 'prose'
+
+  if (!trimmed) kind = 'blank'
+  else if (isNumberedHeading(trimmed)) kind = 'heading-strong'
+  else if (isLabelHeading(trimmed)) kind = 'label-heading'
+  else if (standaloneUrl.test(trimmed)) kind = 'url'
+  else if (standaloneEmail.test(trimmed)) kind = 'email'
+  else if (isCodeLine(trimmed, sourceLine)) kind = 'code'
+  else if (isListItem(trimmed)) kind = 'list-item'
+  else if (isStandaloneSymbolLine(trimmed)) kind = 'symbol'
+  else if (technicalLineStart.test(trimmed) || standaloneTechnicalLine.test(trimmed)) kind = 'technical'
+  else if (isWeakHeadingCandidate(trimmed)) kind = 'heading-weak-candidate'
+
+  return {
+    text: kind === 'code' ? sourceLine.trimEnd() : trimmed,
+    trimmed,
+    kind,
+    indent: getIndent(sourceLine),
+  }
+}
+
+function isEnglishTitleLike(value: string): boolean {
+  if (!/^[A-Z][A-Za-z0-9&' -]*$/.test(value)) return false
+
+  const connectorWords = new Set(['a', 'an', 'and', 'for', 'in', 'of', 'or', 'the', 'to'])
+  const words = value.split(/[ -]+/)
+  return words.every((word, index) => (index > 0 && connectorWords.has(word)) || /^[A-Z][A-Za-z0-9&']*$/.test(word))
+}
+
+function isChineseTitleLike(value: string): boolean {
   return (
-    type === 'numbered-heading' ||
-    type === 'heading' ||
-    type === 'label-heading' ||
-    type === 'standalone-url' ||
-    type === 'standalone-email'
+    /^[\u3400-\u4dbf\u4e00-\u9fff]{2,8}$/.test(value) &&
+    !/^(?:这是|这段|这个|那是|下一行|本段|该段|我们|其中|以及|并且|但是|然后)/.test(value)
+  )
+}
+
+function resolveWeakHeading(line: LineInfo, index: number, lines: LineInfo[]): LineKind {
+  if (line.kind !== 'heading-weak-candidate') return line.kind
+
+  const previous = lines[index - 1]
+  const beforePrevious = lines[index - 2]
+  const next = lines[index + 1]
+  const isParagraphStart =
+    !previous ||
+    previous.kind === 'blank' ||
+    (previous.kind === 'prose' && endsWithSentencePunctuation(previous.trimmed)) ||
+    (previous.kind === 'prose' && beforePrevious?.kind === 'list-item')
+  const nextCanBeBody =
+    next &&
+    next.kind !== 'blank' &&
+    !['heading-strong', 'label-heading', 'list-item', 'url', 'email', 'code', 'symbol', 'technical'].includes(next.kind)
+  const englishTitle = isEnglishTitleLike(line.trimmed)
+  const titleLike = englishTitle || isChineseTitleLike(line.trimmed)
+
+  if (!isParagraphStart || !nextCanBeBody || !titleLike) return 'prose'
+  if (englishTitle && /^[a-z]/.test(next.trimmed)) return 'prose'
+
+  return 'heading-weak'
+}
+
+function resolveLineKinds(lines: LineInfo[]): LineInfo[] {
+  return lines.map((line, index) => ({ ...line, kind: resolveWeakHeading(line, index, lines) }))
+}
+
+function isHardStructure(kind: LineKind): boolean {
+  return (
+    kind === 'heading-strong' ||
+    kind === 'heading-weak' ||
+    kind === 'label-heading' ||
+    kind === 'url' ||
+    kind === 'email' ||
+    kind === 'code' ||
+    kind === 'symbol' ||
+    kind === 'technical'
   )
 }
 
@@ -116,11 +184,11 @@ function endsWithSentencePunctuation(value: string): boolean {
   return /(?:[。！？]|……|[.!?])\s*(?:[”’」』])?$/.test(value)
 }
 
-function looksLikeIndependentSentence(value: string): boolean {
+function isIndependentSentence(value: string): boolean {
   return (
     (isNegativeSentence(value) || isMathExpression(value) || /^\d+\.\d+\s+.+[.!?]$/.test(value)) ||
-    (hasCjkContent(value) && endsWithSentencePunctuation(value) && value.length <= 80) ||
-    (/^[A-Z].*[.!?]$/.test(value) && value.length <= 60)
+    (hasCjkContent(value) && endsWithSentencePunctuation(value)) ||
+    /^[A-Z].*[.!?]$/.test(value)
   )
 }
 
@@ -141,31 +209,57 @@ function isStandaloneSymbolLine(value: string): boolean {
   )
 }
 
-function shouldPreserveShortSentenceBreak(current: string, currentType: LineType, next: string): boolean {
-  return (
-    currentType === 'prose' &&
-    current.length <= 100 &&
-    endsWithSentencePunctuation(current) &&
-    looksLikeIndependentSentence(next)
-  )
-}
-
-function joinLines(previous: string, next: string): string {
+function shouldMergeWithoutSpace(previous: string, next: string): boolean {
   const left = previous.trimEnd()
   const right = next.trimStart()
   const lastCharacter = left.at(-1) ?? ''
   const firstCharacter = right[0] ?? ''
 
-  if (
+  return (
     isCjkToken(lastCharacter) ||
     isCjkToken(firstCharacter) ||
     /^[,.;:!?)}\]，。；：？！、】【）》]/.test(firstCharacter) ||
     /[([{（【《]$/.test(lastCharacter)
-  ) {
-    return `${left}${right}`
+  )
+}
+
+function isClearlyListContinuation(current: LineInfo, next: LineInfo): boolean {
+  if (next.kind !== 'prose') return false
+  if (next.indent > current.indent) return true
+  if (shouldKeepListItemSeparate(current.trimmed) || isIndependentSentence(next.trimmed)) return false
+  if (/^[a-z]/.test(next.trimmed)) return true
+
+  const listContent = current.trimmed.replace(listStart, '').trim()
+  return listContent.length > 4 && /^[A-Z][A-Za-z0-9&'-]*$/.test(next.trimmed)
+}
+
+function decideBoundary(current: LineInfo, next: LineInfo, previous: LineInfo | undefined): BoundaryDecision {
+  if (next.kind === 'list-item') return 'keep-break'
+  if ((isHardStructure(current.kind) && current.kind !== 'technical') || isHardStructure(next.kind)) return 'keep-break'
+
+  if (current.kind === 'list-item') {
+    if (next.trimmed.endsWith('-')) return 'keep-break'
+    if (!isClearlyListContinuation(current, next)) return 'keep-break'
   }
 
-  return `${left} ${right}`
+  if (current.trimmed.endsWith('-') || next.trimmed.endsWith('-') || previous?.trimmed.endsWith('-')) return 'keep-break'
+
+  if (
+    current.kind === 'prose' &&
+    next.kind === 'prose' &&
+    endsWithSentencePunctuation(current.trimmed) &&
+    isIndependentSentence(next.trimmed)
+  ) {
+    return 'keep-break'
+  }
+
+  return shouldMergeWithoutSpace(current.text, next.text) ? 'merge-without-space' : 'merge-with-space'
+}
+
+function mergeLines(previous: string, next: string, decision: BoundaryDecision): string {
+  const left = previous.trimEnd()
+  const right = next.trimStart()
+  return decision === 'merge-without-space' ? `${left}${right}` : `${left} ${right}`
 }
 
 function cleanLineSpacing(value: string, removeCjkLatinSpaces: boolean): string {
@@ -195,21 +289,13 @@ function cleanLineSpacing(value: string, removeCjkLatinSpaces: boolean): string 
     .replace(/\s+([,.;:!?)}\]])/g, '$1')
 }
 
-function cleanSpacing(value: string, removeCjkLatinSpaces: boolean): string {
-  let inCodeBlock = false
-
-  return value
-    .split('\n')
-    .map((line) => {
-      const isCode = isCodeLine(line.trim(), line, inCodeBlock)
-      if (isCode) {
-        inCodeBlock = true
-        return line
-      }
-
-      inCodeBlock = false
-      return standaloneUrl.test(line) || standaloneEmail.test(line) ? line : cleanLineSpacing(line, removeCjkLatinSpaces)
-    })
+function cleanSpacing(lines: AssembledLine[], removeCjkLatinSpaces: boolean): string {
+  return lines
+    .map((line) =>
+      line.kind === 'code' || line.kind === 'url' || line.kind === 'email'
+        ? line.text
+        : cleanLineSpacing(line.text, removeCjkLatinSpaces),
+    )
     .join('\n')
 }
 
@@ -218,7 +304,7 @@ function restoreShortLabels(value: string): string {
   return value.replace(new RegExp(`([^\\n])(${labels})`, 'g'), '$1\n$2')
 }
 
-function restoreChineseStructure(value: string): string {
+function restoreCollapsedChineseStructure(value: string): string {
   const chineseChapter = /(^|\n)((?:[一二三四五六七八九十]+、|（[一二三四五六七八九十]+）)[\u3400-\u4dbf\u4e00-\u9fff]{4})(?=[\u3400-\u4dbf\u4e00-\u9fff])/g
   const inlineChineseLabel = /(^|\n|[A-Za-z0-9])([\u3400-\u4dbf\u4e00-\u9fff]{2,8}[：:])/g
   let restored = restoreShortLabels(value)
@@ -245,126 +331,56 @@ function restoreChineseStructure(value: string): string {
   return restored
 }
 
-export function cleanPdfText(input: string, options: PdfTextCleanerOptions): string {
-  const normalized = input.replace(/\r\n?|\n/g, '\n')
-  const lines = normalized.split('\n')
-  const output: string[] = []
-  let current = ''
-  let currentType: LineType = 'blank'
-  let preserveFollowingLineBreak = false
+function assembleLines(lines: LineInfo[]): AssembledLine[] {
+  const output: AssembledLine[] = []
+  let current: AssembledLine | undefined
+  let previous: LineInfo | undefined
+  let beforePrevious: LineInfo | undefined
 
   function flushCurrent() {
-    if (current) {
-      output.push(current)
-      current = ''
-      currentType = 'blank'
-      preserveFollowingLineBreak = false
-    }
+    if (current) output.push(current)
+    current = undefined
   }
 
-  for (let index = 0; index < lines.length; index += 1) {
-    const sourceLine = lines[index] ?? ''
-    const trimmedLine = sourceLine.trim()
-    const type = classifyLine(trimmedLine, lines[index + 1], sourceLine, currentType === 'code-line')
-    const line = type === 'code-line' ? sourceLine.trimEnd() : trimmedLine
-
-    if (type === 'blank') {
+  for (const line of lines) {
+    if (line.kind === 'blank') {
       flushCurrent()
-      if (output.length > 0 && output.at(-1) !== '') {
-        output.push('')
+      if (output.length > 0 && output.at(-1)?.kind !== 'blank') {
+        output.push({ text: '', kind: 'blank' })
       }
+      beforePrevious = undefined
+      previous = undefined
       continue
     }
 
-    if (!current) {
-      current = line
-      currentType = type
+    if (!current || !previous) {
+      current = { text: line.text, kind: line.kind }
+      beforePrevious = undefined
+      previous = line
       continue
     }
 
-    if (currentType === 'code-line') {
-      if (type === 'code-line') {
-        current = `${current}\n${line}`
-        continue
-      }
-
+    const decision = decideBoundary(previous, line, beforePrevious)
+    if (decision === 'keep-break') {
       flushCurrent()
-      current = line
-      currentType = type
-      continue
+      current = { text: line.text, kind: line.kind }
+    } else {
+      current.text = mergeLines(current.text, line.text, decision)
     }
-
-    if (preserveFollowingLineBreak) {
-      flushCurrent()
-      current = line
-      currentType = type
-      continue
-    }
-
-    if (isStandaloneStructure(currentType) || (currentType !== 'list-item' && current.endsWith('-'))) {
-      flushCurrent()
-      current = line
-      currentType = type
-      preserveFollowingLineBreak = true
-      continue
-    }
-
-    if (type === 'code-line' || type === 'list-item' || isStandaloneStructure(type)) {
-      flushCurrent()
-      current = line
-      currentType = type
-      continue
-    }
-
-    if (isStandaloneSymbolLine(current) || isStandaloneSymbolLine(line)) {
-      flushCurrent()
-      current = line
-      currentType = type
-      continue
-    }
-
-    if (currentType === 'list-item' && line.endsWith('-')) {
-      flushCurrent()
-      current = line
-      currentType = type
-      continue
-    }
-
-    if (
-      currentType === 'list-item' &&
-      (isNegativeSentence(line) || isMathExpression(line) || (!/^\s+/.test(sourceLine) && looksLikeIndependentSentence(line)))
-    ) {
-      flushCurrent()
-      current = line
-      currentType = type
-      continue
-    }
-
-    if (currentType === 'list-item' && shouldKeepListItemSeparate(current)) {
-      flushCurrent()
-      current = line
-      currentType = type
-      continue
-    }
-
-    if (technicalLineStart.test(line)) {
-      flushCurrent()
-      current = line
-      currentType = type
-      continue
-    }
-
-    if (shouldPreserveShortSentenceBreak(current, currentType, line)) {
-      flushCurrent()
-      current = line
-      currentType = type
-      continue
-    }
-
-    current = joinLines(current, line)
+    beforePrevious = previous
+    previous = line
   }
 
   flushCurrent()
+  return output
+}
 
-  return restoreChineseStructure(cleanSpacing(output.join('\n'), options.removeCjkLatinSpaces)).trim()
+export function cleanPdfText(input: string, options: PdfTextCleanerOptions): string {
+  const normalized = input.replace(/\r\n?|\n/g, '\n')
+  const classifiedLines = normalized.split('\n').map(classifyLine)
+  const resolvedLines = resolveLineKinds(classifiedLines)
+  const assembledLines = assembleLines(resolvedLines)
+  const cleaned = cleanSpacing(assembledLines, options.removeCjkLatinSpaces)
+
+  return restoreCollapsedChineseStructure(cleaned).trim()
 }
