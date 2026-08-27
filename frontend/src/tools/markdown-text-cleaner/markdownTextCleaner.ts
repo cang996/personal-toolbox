@@ -1,3 +1,5 @@
+import { removeCopyResidue } from '@/shared/text/copyResidue'
+
 export interface MarkdownTextCleanerOptions {
   preserveLinkUrls: boolean
   numberHeadings?: boolean
@@ -169,10 +171,6 @@ function protectInlineCode(value: string, protect: (content: string) => string):
   }
 
   return result
-}
-
-function removeCopyResidue(value: string): string {
-  return value.replace(/[\u200B\u00AD\uFEFF]/g, '').replace(/\u00A0/g, ' ')
 }
 
 function cleanInlineMarkdown(value: string, options: MarkdownTextCleanerOptions): string {

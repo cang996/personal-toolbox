@@ -1,5 +1,8 @@
+import { removeCopyResidue } from '@/shared/text/copyResidue'
+
 export interface PdfTextCleanerOptions {
   removeCjkLatinSpaces: boolean
+  cleanCopyResidue?: boolean
 }
 
 const cjkCharacter = '[\\u3400-\\u4dbf\\u4e00-\\u9fff\\uf900-\\ufaff]'
@@ -99,14 +102,15 @@ function getIndent(sourceLine: string): number {
 
 function classifyLine(sourceLine: string): LineInfo {
   const trimmed = sourceLine.trim()
+  const protectedDetectionText = removeCopyResidue(trimmed)
   let kind: LineKind = 'prose'
 
   if (!trimmed) kind = 'blank'
   else if (isNumberedHeading(trimmed)) kind = 'heading-strong'
   else if (isLabelHeading(trimmed)) kind = 'label-heading'
-  else if (standaloneUrl.test(trimmed)) kind = 'url'
-  else if (standaloneEmail.test(trimmed)) kind = 'email'
-  else if (isCodeLine(trimmed, sourceLine)) kind = 'code'
+  else if (standaloneUrl.test(protectedDetectionText)) kind = 'url'
+  else if (standaloneEmail.test(protectedDetectionText)) kind = 'email'
+  else if (isCodeLine(protectedDetectionText, sourceLine)) kind = 'code'
   else if (isListItem(trimmed)) kind = 'list-item'
   else if (isStandaloneSymbolLine(trimmed)) kind = 'symbol'
   else if (technicalLineStart.test(trimmed) || standaloneTechnicalLine.test(trimmed)) kind = 'technical'
@@ -131,7 +135,7 @@ function isEnglishTitleLike(value: string): boolean {
 function isChineseTitleLike(value: string): boolean {
   return (
     /^[\u3400-\u4dbf\u4e00-\u9fff]{2,8}$/.test(value) &&
-    !/^(?:这是|这段|这个|那是|下一行|本段|该段|我们|其中|以及|并且|但是|然后)/.test(value)
+    !/^(?:这是|这段|这个|那是|正文|下一行|本段|该段|我们|其中|以及|并且|但是|然后)/.test(value)
   )
 }
 
@@ -141,20 +145,22 @@ function resolveWeakHeading(line: LineInfo, index: number, lines: LineInfo[]): L
   const previous = lines[index - 1]
   const beforePrevious = lines[index - 2]
   const next = lines[index + 1]
-  const isParagraphStart =
-    !previous ||
-    previous.kind === 'blank' ||
-    (previous.kind === 'prose' && endsWithSentencePunctuation(previous.trimmed)) ||
-    (previous.kind === 'prose' && beforePrevious?.kind === 'list-item')
   const nextCanBeBody =
     next &&
-    next.kind !== 'blank' &&
-    !['heading-strong', 'label-heading', 'list-item', 'url', 'email', 'code', 'symbol', 'technical'].includes(next.kind)
+    (next.kind === 'prose' ||
+      (next.kind === 'heading-weak-candidate' &&
+        !isEnglishTitleLike(next.trimmed) &&
+        !isChineseTitleLike(next.trimmed)))
   const englishTitle = isEnglishTitleLike(line.trimmed)
   const titleLike = englishTitle || isChineseTitleLike(line.trimmed)
+  const followsClearListContinuation =
+    previous?.kind === 'list-item' ||
+    (beforePrevious?.kind === 'list-item' && previous?.kind === 'prose' && /^[a-z]/.test(previous.trimmed))
 
-  if (!isParagraphStart || !nextCanBeBody || !titleLike) return 'prose'
-  if (englishTitle && /^[a-z]/.test(next.trimmed)) return 'prose'
+  if (!titleLike) return 'prose'
+  if (englishTitle && /^[a-z]/.test(next?.trimmed ?? '')) return 'prose'
+  if (englishTitle && followsClearListContinuation) return 'prose'
+  if (!nextCanBeBody) return 'heading-weak-candidate'
 
   return 'heading-weak'
 }
@@ -233,9 +239,15 @@ function isClearlyListContinuation(current: LineInfo, next: LineInfo): boolean {
   return listContent.length > 4 && /^[A-Z][A-Za-z0-9&'-]*$/.test(next.trimmed)
 }
 
+function isShortLatinToken(value: string): boolean {
+  const detectionText = removeCopyResidue(value)
+  return detectionText.length <= 40 && /^[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*$/.test(detectionText)
+}
+
 function decideBoundary(current: LineInfo, next: LineInfo, previous: LineInfo | undefined): BoundaryDecision {
   if (next.kind === 'list-item') return 'keep-break'
   if ((isHardStructure(current.kind) && current.kind !== 'technical') || isHardStructure(next.kind)) return 'keep-break'
+  if (current.kind === 'heading-weak-candidate' || next.kind === 'heading-weak-candidate') return 'keep-break'
 
   if (current.kind === 'list-item') {
     if (next.trimmed.endsWith('-')) return 'keep-break'
@@ -243,6 +255,8 @@ function decideBoundary(current: LineInfo, next: LineInfo, previous: LineInfo | 
   }
 
   if (current.trimmed.endsWith('-') || next.trimmed.endsWith('-') || previous?.trimmed.endsWith('-')) return 'keep-break'
+
+  if (!previous && isShortLatinToken(current.trimmed) && isShortLatinToken(next.trimmed)) return 'keep-break'
 
   if (
     current.kind === 'prose' &&
@@ -289,13 +303,14 @@ function cleanLineSpacing(value: string, removeCjkLatinSpaces: boolean): string 
     .replace(/\s+([,.;:!?)}\]])/g, '$1')
 }
 
-function cleanSpacing(lines: AssembledLine[], removeCjkLatinSpaces: boolean): string {
+function cleanSpacing(lines: AssembledLine[], removeCjkLatinSpaces: boolean, cleanCopyResidue: boolean): string {
   return lines
-    .map((line) =>
-      line.kind === 'code' || line.kind === 'url' || line.kind === 'email'
-        ? line.text
-        : cleanLineSpacing(line.text, removeCjkLatinSpaces),
-    )
+    .map((line) => {
+      if (line.kind === 'code' || line.kind === 'url' || line.kind === 'email') return line.text
+
+      const eligibleText = cleanCopyResidue ? removeCopyResidue(line.text) : line.text
+      return cleanLineSpacing(eligibleText, removeCjkLatinSpaces)
+    })
     .join('\n')
 }
 
@@ -376,11 +391,12 @@ function assembleLines(lines: LineInfo[]): AssembledLine[] {
 }
 
 export function cleanPdfText(input: string, options: PdfTextCleanerOptions): string {
-  const normalized = input.replace(/\r\n?|\n/g, '\n')
+  const withoutLeadingBom = input.startsWith('\uFEFF') ? input.slice(1) : input
+  const normalized = withoutLeadingBom.replace(/\r\n?|\n/g, '\n')
   const classifiedLines = normalized.split('\n').map(classifyLine)
   const resolvedLines = resolveLineKinds(classifiedLines)
   const assembledLines = assembleLines(resolvedLines)
-  const cleaned = cleanSpacing(assembledLines, options.removeCjkLatinSpaces)
+  const cleaned = cleanSpacing(assembledLines, options.removeCjkLatinSpaces, options.cleanCopyResidue ?? false)
 
   return restoreCollapsedChineseStructure(cleaned).trim()
 }

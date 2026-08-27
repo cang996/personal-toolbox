@@ -2,6 +2,7 @@
 import { computed, ref, watch } from 'vue'
 
 import ToolPageLayout from '@/shared/components/ToolPageLayout.vue'
+import { countCharacters, countLines } from '@/shared/text/textStatistics'
 
 import { cleanPdfText } from './pdfTextCleaner'
 
@@ -9,6 +10,7 @@ type CleanerState = 'idle' | 'empty' | 'success' | 'copy-success' | 'copy-error'
 
 const inputText = ref('')
 const removeCjkLatinSpaces = ref(true)
+const cleanCopyResidue = ref(false)
 const result = ref('')
 const state = ref<CleanerState>('idle')
 const statusMessage = ref('粘贴文本后点击“开始清理”。')
@@ -16,8 +18,13 @@ const title = 'PDF 复制文本清理'
 const description = '清理从 PDF 复制后产生的异常换行、字符间距和列表结构。'
 
 const hasResult = computed(() => result.value.length > 0)
+const hasCurrentResult = computed(() => state.value !== 'idle' && state.value !== 'empty')
+const inputCharacterCount = computed(() => countCharacters(inputText.value))
+const inputLineCount = computed(() => countLines(inputText.value))
+const outputCharacterCount = computed(() => countCharacters(result.value))
+const outputLineCount = computed(() => countLines(result.value))
 
-watch([inputText, removeCjkLatinSpaces], invalidateResult, { flush: 'sync' })
+watch([inputText, removeCjkLatinSpaces, cleanCopyResidue], invalidateResult, { flush: 'sync' })
 
 function runCleaner() {
   if (!inputText.value.trim()) {
@@ -27,7 +34,10 @@ function runCleaner() {
     return
   }
 
-  result.value = cleanPdfText(inputText.value, { removeCjkLatinSpaces: removeCjkLatinSpaces.value })
+  result.value = cleanPdfText(inputText.value, {
+    removeCjkLatinSpaces: removeCjkLatinSpaces.value,
+    cleanCopyResidue: cleanCopyResidue.value,
+  })
   state.value = 'success'
   statusMessage.value = '已生成清理结果。'
 }
@@ -36,6 +46,7 @@ function clearAll() {
   inputText.value = ''
   result.value = ''
   removeCjkLatinSpaces.value = true
+  cleanCopyResidue.value = false
   state.value = 'idle'
   statusMessage.value = '已清空输入和清理结果。'
 }
@@ -71,21 +82,36 @@ function invalidateResult() {
     <div class="pdf-text-cleaner">
       <div class="content-grid">
         <section class="text-panel">
-          <label for="pdf-source-text">原始文本</label>
+          <div class="panel-heading">
+            <label for="pdf-source-text">原始文本</label>
+            <p class="text-metrics" aria-label="输入文本统计">{{ inputCharacterCount }} 字符 · {{ inputLineCount }} 行</p>
+          </div>
           <textarea id="pdf-source-text" v-model="inputText" placeholder="粘贴从 PDF 复制出的文本" spellcheck="false" />
         </section>
 
         <section class="text-panel">
-          <label for="cleaned-text">清理结果</label>
+          <div class="panel-heading">
+            <label for="cleaned-text">清理结果</label>
+            <p v-if="hasCurrentResult" class="text-metrics" aria-label="清理结果统计">
+              {{ outputCharacterCount }} 字符 · {{ outputLineCount }} 行
+            </p>
+          </div>
           <textarea id="cleaned-text" :value="result" readonly aria-label="清理结果" />
         </section>
       </div>
 
       <section class="controls" aria-label="清理选项和操作">
-        <label class="checkbox-label">
-          <input v-model="removeCjkLatinSpaces" type="checkbox" />
-          移除中文与英文之间的空格
-        </label>
+        <div class="options">
+          <label class="checkbox-label">
+            <input v-model="removeCjkLatinSpaces" type="checkbox" />
+            移除中文与英文之间的空格
+          </label>
+
+          <label class="checkbox-label">
+            <input v-model="cleanCopyResidue" type="checkbox" />
+            清理复制残留字符
+          </label>
+        </div>
 
         <div class="actions">
           <button type="button" class="primary-action" @click="runCleaner">开始清理</button>
@@ -103,10 +129,12 @@ function invalidateResult() {
 .pdf-text-cleaner, .text-panel { display: grid; gap: var(--space-4); }
 .content-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-4); }
 .text-panel { gap: var(--space-2); min-width: 0; }
+.panel-heading { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-3); align-items: baseline; justify-content: space-between; min-width: 0; }
+.text-metrics { color: var(--color-text-muted); font-size: 0.8125rem; white-space: nowrap; }
 label { color: var(--color-text-primary); font-weight: 700; }
 textarea { min-width: 0; min-height: 20rem; resize: vertical; border: 1px solid var(--color-border-subtle); border-radius: var(--radius-control); background: var(--color-surface); padding: 0.875rem; color: var(--color-text-primary); line-height: 1.6; overflow-wrap: anywhere; white-space: pre-wrap; }
 textarea:focus-visible { border-color: var(--color-accent); }
-.controls, .actions { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: center; }
+.controls, .options, .actions { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: center; }
 .controls { justify-content: space-between; }
 .checkbox-label { display: inline-flex; gap: var(--space-2); align-items: center; cursor: pointer; }
 button { min-height: var(--control-height); border: 1px solid var(--color-border-subtle); border-radius: var(--radius-control); background: var(--color-surface); padding: 0.55rem 0.85rem; color: var(--color-text-primary); font-weight: 700; cursor: pointer; }
