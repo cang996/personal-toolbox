@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { cleanPdfText } from './pdfTextCleaner'
 
 const removeCjkLatinSpaces = { removeCjkLatinSpaces: true }
+const withCopyResidueCleanup = { removeCjkLatinSpaces: true, cleanCopyResidue: true }
 
 describe('cleanPdfText', () => {
   it('returns empty text for empty or whitespace-only input', () => {
@@ -26,6 +27,40 @@ describe('cleanPdfText', () => {
   it('applies the CJK and Latin spacing option without joining English words', () => {
     expect(cleanPdfText('Android 和 Java API', removeCjkLatinSpaces)).toBe('Android和Java API')
     expect(cleanPdfText('Android 和 Java API', { removeCjkLatinSpaces: false })).toBe('Android 和 Java API')
+  })
+
+  describe('copy residue cleanup', () => {
+    it('preserves contracted residues when the option is off', () => {
+      const input = 'A\u200BB\u00ADC\u00A0D\uFEFFE'
+
+      expect(cleanPdfText(input, removeCjkLatinSpaces)).toBe(input)
+    })
+
+    it('removes contracted residues and converts NBSP when the option is on', () => {
+      expect(cleanPdfText('A\u200BB\u00ADC\u00A0D\uFEFFE', withCopyResidueCleanup)).toBe('ABC DE')
+      expect(cleanPdfText('标签\u200B：\n• 项\u00AD目', withCopyResidueCleanup)).toBe('标签：\n• 项目')
+    })
+
+    it('always removes one leading BOM while preserving an internal BOM when cleanup is off', () => {
+      expect(cleanPdfText('\uFEFFStart\uFEFFMiddle', removeCjkLatinSpaces)).toBe('Start\uFEFFMiddle')
+      expect(cleanPdfText('\uFEFFStart\uFEFFMiddle', withCopyResidueCleanup)).toBe('StartMiddle')
+    })
+
+    it('preserves ZWNJ and ZWJ with cleanup both off and on', () => {
+      const input = 'A\u200CB\u200DC'
+
+      expect(cleanPdfText(input, removeCjkLatinSpaces)).toBe(input)
+      expect(cleanPdfText(input, withCopyResidueCleanup)).toBe(input)
+    })
+
+    it('does not clean residue inside protected code, URL, or email lines', () => {
+      const code = 'const value = "\u200B\u00AD\u00A0\uFEFF";'
+      const url = 'https://example.com/\u200B\u00AD\uFEFFpath'
+      const email = 'user\u200B\u00AD\uFEFF@example.com'
+      const input = `${code}\n${url}\n${email}`
+
+      expect(cleanPdfText(input, withCopyResidueCleanup)).toBe(input)
+    })
   })
 
   it('preserves paragraph boundaries and normalizes repeated blank lines', () => {
@@ -114,6 +149,34 @@ Android 和 Java API 的 版 本 。`
         '项目背景\n这是正文第一行这是正文第二行',
       )
       expect(cleanPdfText('项目背景\n正文第一行\n正文第二行', removeCjkLatinSpaces)).toBe('项目背景\n正文第一行正文第二行')
+    })
+
+    it('keeps a body-confirmed weak heading independent of unrelated preceding short lines', () => {
+      const headingAndBody = '项目背景\n正文第一行正文第二行'
+
+      expect(cleanPdfText('AB\nwell-known\n项目背景\n正文第一行\n正文第二行', removeCjkLatinSpaces)).toBe(
+        `AB\nwell-known\n${headingAndBody}`,
+      )
+      expect(cleanPdfText('A\u200BB\nwell-known\n项目背景\n正文第一行\n正文第二行', withCopyResidueCleanup)).toBe(
+        `AB\nwell-known\n${headingAndBody}`,
+      )
+      expect(cleanPdfText('前置普通文本\n项目背景\n正文第一行\n正文第二行', removeCjkLatinSpaces)).toBe(
+        `前置普通文本\n${headingAndBody}`,
+      )
+      expect(cleanPdfText('项目背景\n正文第一行\n正文第二行', removeCjkLatinSpaces)).toBe(headingAndBody)
+    })
+
+    it('keeps consecutive ambiguous structural lines while still merging short wrapped prose', () => {
+      expect(cleanPdfText('项目背景\nIntroduction\nConclusion\nReferences', removeCjkLatinSpaces)).toBe(
+        '项目背景\nIntroduction\nConclusion\nReferences',
+      )
+      expect(cleanPdfText('Introduction\nConclusion\nReferences', removeCjkLatinSpaces)).toBe(
+        'Introduction\nConclusion\nReferences',
+      )
+      expect(cleanPdfText('AB\nwell-known', removeCjkLatinSpaces)).toBe('AB\nwell-known')
+      expect(cleanPdfText('A short phrase\ncontinued here.', removeCjkLatinSpaces)).toBe(
+        'A short phrase continued here.',
+      )
     })
 
     it('treats ambiguous short Chinese prose conservatively instead of forcing a heading', () => {
