@@ -22,9 +22,9 @@ export const textCleanerTool: ToolDefinition = {
   id: 'text-cleaner',
   name: '文本清理',
   englishName: 'TEXT CLEANER',
-  description: '清理 PDF 复制文本，并逐步支持更多文本格式。',
+  description: '清理 PDF、Markdown，并规范普通文本的空格与字符格式。',
   category: '文本处理',
-  tags: ['LOCAL', 'PDF / MARKDOWN'],
+  tags: ['LOCAL', 'PDF / MARKDOWN / TEXT'],
   path: '/tools/text-cleaner',
 }
 
@@ -48,6 +48,16 @@ export const markdownTextCleanerTool: ToolDefinition = {
   path: '/tools/text-cleaner/markdown',
 }
 
+export const textNormalizerTool: ToolDefinition = {
+  id: 'text-normalizer',
+  name: '文本规范化',
+  englishName: 'TEXT NORMALIZER',
+  description: '规范普通文本的空格、中英混排、标点间距和全角字母数字。',
+  category: '文本处理',
+  tags: ['LOCAL', 'PLAIN TEXT'],
+  path: '/tools/text-cleaner/normalizer',
+}
+
 export const exchangeRateTool: ToolDefinition = {
   id: 'exchange-rate',
   name: '汇率比较',
@@ -63,6 +73,7 @@ export const recentTools: ToolDefinition[] = [
   textCompareTool,
   pdfTextCleanerTool,
   markdownTextCleanerTool,
+  textNormalizerTool,
   exchangeRateTool,
 ]
 

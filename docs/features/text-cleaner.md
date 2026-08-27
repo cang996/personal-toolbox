@@ -4,16 +4,17 @@
 
 ## 1. Purpose
 
-Text Cleaner 是一个纯前端文本处理工具，用来整理从 PDF 阅读器复制出的文本，以及把 Markdown 转成适合粘贴到普通文档中的纯文本结构。它不上传内容，也不保存草稿。
+Text Cleaner 是一个纯前端文本处理工具，用来整理从 PDF 阅读器复制出的文本、把 Markdown 转成适合粘贴到普通文档中的纯文本结构，以及规范普通文本自身的空格与字符格式。它不上传内容，也不保存草稿。
 
 ## 2. Feature Scope
 
-应用入口为 `/tools/text-cleaner`，提供两个独立子模块：
+应用入口为 `/tools/text-cleaner`，提供三个独立子模块：
 
 - `/tools/text-cleaner/pdf`：PDF 复制文本清理。
 - `/tools/text-cleaner/markdown`：Markdown 格式清理。
+- `/tools/text-cleaner/normalizer`：文本规范化。
 
-“PDF”指用户从 PDF 复制后粘贴进文本框的文字；当前实现不接收、读取或解析 `.pdf` 文件。两个模块共享入口和页面布局，但处理规则、状态与测试分别留在各自 feature module 中。
+“PDF”指用户从 PDF 复制后粘贴进文本框的文字；当前实现不接收、读取或解析 `.pdf` 文件。三个模块共享入口和页面布局，但处理规则、状态与测试分别留在各自 feature module 中。
 
 ## 3. Architecture
 
@@ -21,9 +22,10 @@ Text Cleaner 是一个纯前端文本处理工具，用来整理从 PDF 阅读�
 frontend/src/app/router/index.ts
   -> TextCleanerHomeView.vue
        |-> PdfTextCleanerView.vue -> cleanPdfText()
-       `-> MarkdownTextCleanerView.vue -> cleanMarkdownText()
-                                      |
-                                      `-> browser clipboard (copy only)
+       |-> MarkdownTextCleanerView.vue -> cleanMarkdownText()
+       `-> TextNormalizerView.vue -> normalizeText()
+                                    |
+                                    `-> browser clipboard (copy only)
 ```
 
 主要文件：
@@ -33,12 +35,14 @@ frontend/src/app/router/index.ts
 - `frontend/src/tools/pdf-text-cleaner/pdfTextCleaner.ts`
 - `frontend/src/tools/markdown-text-cleaner/MarkdownTextCleanerView.vue`
 - `frontend/src/tools/markdown-text-cleaner/markdownTextCleaner.ts`
+- `frontend/src/tools/text-normalizer/TextNormalizerView.vue`
+- `frontend/src/tools/text-normalizer/textNormalizer.ts`
 
-Vue view 负责输入、选项、显式执行、结果失效、清空、复制和状态消息；两个 TypeScript utility 负责纯文本转换。模块没有互相导入。
+Vue view 负责输入、选项、显式执行、结果失效、清空、复制和状态消息；三个 TypeScript utility 负责各自的纯文本转换。模块没有互相导入。
 
 ## 4. User Flow
 
-1. 用户从 Text Cleaner 入口选择 PDF 或 Markdown 模式。
+1. 用户从 Text Cleaner 入口选择 PDF、Markdown 或普通文本规范化模式。
 2. 用户把文本粘贴到左侧输入框并设置本页选项。
 3. 点击“开始清理”后，view 调用对应纯函数并在右侧显示结果。
 4. 输入或选项变化会清除旧结果，避免显示与当前设置不一致的内容。
@@ -61,7 +65,7 @@ textarea string + local option refs
 
 ## 6. Frontend Responsibilities
 
-两个 view 都维护 `idle`、`empty`、`success`、`copy-success`、`copy-error` 状态。空白输入不会生成结果；结果存在时，输入或选项变化会将其作废。清空操作恢复各页默认选项。所有业务转换都由 utility 完成，而不是写在模板中。
+三个 view 都维护 `idle`、`empty`、`success`、`copy-success`、`copy-error` 状态。空白输入不会生成结果；结果存在时，输入或选项变化会将其作废。清空操作恢复各页默认选项。所有业务转换都由 utility 完成，而不是写在模板中。
 
 ## 7. PDF Copy Text Cleaner
 
@@ -136,55 +140,96 @@ textarea string + local option refs
 
 链接 URL 支持平衡的嵌套圆括号和可选 title；格式不完整的强调、链接、行内代码和单独反斜杠尽量原样保留。多反引号行内代码只做有限的同长度 delimiter 支持；围栏 opener 也采用面向当前清理需求的保守识别。该实现仍不是 CommonMark parser，复杂嵌套、HTML、脚注、定义列表和非标准扩展不保证完全保真。
 
-## 9. Shared Logic
+## 9. Text Normalizer
 
-两个 cleaner 共享应用级 `ToolPageLayout`、路由和浏览器剪贴板能力，但分类规则、选项和转换函数语义仍分别留在各自模块，没有统一 cleaner engine。PDF Cleaner、Markdown Cleaner 与 Text Compare 共同使用无组件依赖的字符/行计数 helper；两个 cleaner 还共享只负责四项 Unicode 字符 mapping 的 `shared/text/copyResidue.ts`，各工具仍自行决定 protected regions。Text Compare 原有计数导出与行为保持不变。Vue 组件也不直接访问 `localStorage` 或 IndexedDB。
+### 9.1 Contract and options
 
-## 10. Input/Output Contract
+`normalizeText(input, options)` 是同步、确定性的普通文本转换。五个页面选项全部默认关闭：
+
+1. `cleanCopyResidue`：删除 U+200B、U+00AD 和内部 U+FEFF，将 U+00A0 转为 ASCII space；保留 ZWNJ、ZWJ 和 literal `-`。
+2. `normalizeWhitespace`：逐行把 tab、U+3000 和 NBSP 转成 ASCII space，将连续 ASCII space 合并为一个并删除行尾 ASCII space。行首多个空格会收敛为一个，手工对齐、ASCII table、代码缩进或诗歌排版可能改变，因此该选项保持 opt-in。
+3. `addCjkLatinSpacing`：在 Unicode `Script=Han` 与 ASCII Latin letter/digit token 边界放置恰好一个 ASCII space；不会把全角字母、中文标点或 CJK symbol 当作 Han。
+4. `normalizePunctuationSpacing`：清理常见中英文标点、括号、引号、小数、百分号、美元金额、比例/时间和版本号的确定性异常空格；不转换 punctuation glyph，也不自动补普通英文标点后的空格。
+5. `normalizeFullWidthAlphanumeric`：仅将 U+FF10–FF19、U+FF21–FF3A、U+FF41–FF5A 映射为半角 ASCII；不转换 U+3000、全角符号、中文标点或其他兼容字符。
+
+所有选项关闭时，普通 LF 内容可见字符保持不变。无论选项如何，CRLF/CR 始终统一为 LF，文档最前面的一个 BOM 始终删除；不执行全局 trim，不合并行，也不压缩空行数量。whitespace-only line 在 whitespace option 开启后会变成空行，但该行仍存在。
+
+示例：
+
+```text
+这是ChatGPT生成的     -> 这是 ChatGPT 生成的
+使用GPT-5模型         -> 使用 GPT-5 模型
+Hello , world !       -> Hello, world!
+ＡＢＣ１２３，中文！ -> ABC123，中文！
+A   B                  -> A B
+```
+
+### 9.2 Pipeline and protected fragments
+
+真实执行顺序为：newline normalization → leading BOM removal → optional copy residue → optional full-width alphanumeric → optional ordinary whitespace → deterministic numeric punctuation spacing → protected-fragment segmentation → remaining punctuation spacing → Han/Latin-number spacing → segment assembly。
+
+HTTP/HTTPS URL、email、Windows/POSIX path、日期、compact version、小数和有限的 compact technical token 会形成轻量 `{ text, protected }` segment。标点清理跳过其内部内容；Han spacing 仍检查 segment 边界，因此 `使用https://example.com测试` 可变为 `使用 https://example.com 测试`，URL 本身不改变。实现没有通用 parser、固定 placeholder 或跨工具 rule engine。
+
+### 9.3 Statistics and non-goals
+
+页面直接复用 `shared/text/textStatistics.ts` 显示输入和当前有效输出的 Unicode code-point 字符数与逻辑行数。输入或任一选项变化会清空旧结果并隐藏旧统计。
+
+Normalizer 不做 PDF paragraph recovery、Markdown syntax cleanup、语言/句子检测、标点 glyph 转换、全局 NFKC、全角 symbol 转换、空行压缩、代码/表格格式化、上传或持久化。protected-fragment 识别是有限规则，不承诺解析含 Han 的国际化 URL、所有 shell command 或任意编程语言。
+
+## 10. Shared Logic
+
+三个 cleaner 共享应用级 `ToolPageLayout`、路由和浏览器剪贴板能力，但分类规则、选项和转换函数语义仍分别留在各自模块，没有统一 cleaner engine。三个 cleaner 与 Text Compare 共同使用无组件依赖的字符/行计数 helper；三个 cleaner 还复用只负责四项 Unicode 字符 mapping 的 `shared/text/copyResidue.ts`，各工具仍自行决定调用范围或 protected regions。Text Compare 原有计数导出与行为保持不变。Vue 组件也不直接访问 `localStorage` 或 IndexedDB。
+
+## 11. Input/Output Contract
 
 | Module | Input | Options | Output |
 | --- | --- | --- | --- |
 | PDF | pasted text string | `removeCjkLatinSpaces: boolean`; optional `cleanCopyResidue: boolean` | cleaned plain-text string |
 | Markdown | Markdown string | `preserveLinkUrls: boolean`; optional `numberHeadings: boolean`; optional `cleanCopyResidue: boolean` | cleaned plain-text string |
+| Normalizer | plain-text string | five required boolean options, all default off in the view | normalized plain-text string |
 
 函数是同步、确定性、无副作用的纯转换；空字符串都得到空字符串。页面负责拒绝只有空白的交互输入，但 utility 本身仍可直接测试。
 
-## 11. Local Processing and Privacy
+## 12. Local Processing and Privacy
 
 实现中没有 `fetch`、上传、后端调用或持久化。输入和输出只存在于当前 Vue 组件内存中。只有用户点击“复制结果”时，结果字符串才传给浏览器的 `navigator.clipboard`；实际剪贴板权限和系统行为由浏览器控制。
 
-## 12. Tests
+## 13. Tests
 
-- `TextCleanerHomeView.spec.ts` 保护两个子模块入口及路由。
+- `TextCleanerHomeView.spec.ts` 保护三个子模块入口及路由。
 - `pdfTextCleaner.spec.ts` 覆盖换行合并、CJK/拉丁空格、段落、列表、标题、标签、URL、邮箱、代码、复制残留字符、protected lines、literal hyphen、数字与完整回归样本。
 - `PdfTextCleanerView.spec.ts` 覆盖显式执行、结果失效、两个选项的默认/清空行为、复制残留开关、输入/结果统计和复制失败。
 - `markdownTextCleaner.spec.ts` 覆盖 block/inline 规则、转义保护、畸形输入、URL 圆括号、严格 fence 边界、代码内空白、复制残留字符、已有标题编号 context，以及标题默认不编号和原六级算法。
 - `MarkdownTextCleanerView.spec.ts` 覆盖执行、结果失效、三个选项的默认/清空行为、复制残留开关、编号切换、输入/结果统计和剪贴板反馈。
+- `textNormalizer.spec.ts` 覆盖默认保真、换行/BOM、五项独立规则、技术片段保护、组合行为与 idempotence。
+- `TextNormalizerView.spec.ts` 覆盖五项默认值与 wiring、显式执行、空输入、结果失效、清空、复制和统计。
+- 应用、入口和 recent-tool tests 保护 Normalizer route、第三张卡、非顶层注册及最近使用 metadata。
 - `shared/text/textStatistics.spec.ts` 固定 Unicode code point 字符数以及 LF/CRLF/CR、空文本和末尾换行的行数语义。
 - `shared/text/copyResidue.spec.ts` 固定四项复制残留字符 mapping，并保护 ASCII literal hyphen。
 
-## 13. Known Limitations
+## 14. Known Limitations
 
 - PDF 模式不读取 PDF 文件，也没有字体、坐标、列或页信息，只能依据粘贴后的字符和换行猜测结构。
-- 两个 cleaner 都是针对已知复制文本问题的正则与启发式实现，不是通用排版恢复或 Markdown AST 转换器。
+- 三个 cleaner 都是针对明确文本问题的小型规则实现，不是通用排版恢复、Markdown AST 转换器或自然语言排版引擎。
 - 大文本在主线程同步处理，当前没有显式大小限制或进度反馈。
 - 页面刷新会丢失输入和结果；没有草稿保存或备份格式。
 - 剪贴板可能因权限、浏览器策略或非安全上下文而失败。
 
-## 14. Where to Modify
+## 15. Where to Modify
 
 - PDF 转换规则：`frontend/src/tools/pdf-text-cleaner/pdfTextCleaner.ts`，并同步扩充同目录 spec。
 - Markdown 转换规则：`frontend/src/tools/markdown-text-cleaner/markdownTextCleaner.ts`，并同步扩充同目录 spec。
+- Normalizer 转换规则：`frontend/src/tools/text-normalizer/textNormalizer.ts`，并同步扩充同目录 spec。
 - 页面选项和交互：各自的 `*View.vue` 与 `*View.spec.ts`。
 - 入口卡片：`frontend/src/tools/text-cleaner/`。
 - 应用路由和工具元数据：`frontend/src/app/router/index.ts`、`frontend/src/app/tools.ts`。
 
 避免让一个 cleaner 直接依赖另一个 cleaner；只有语义、错误处理和变更原因真正一致的行为才应进入 `frontend/src/shared`。
 
-## 15. Design Decisions
+## 16. Design Decisions
 
 - 保持“显式点击后处理”，让用户能在运行前完成输入与选项设置。
 - 选项变化使旧结果失效，而不是静默展示过期结果。
 - Markdown 标题编号是可选的内容改写，默认关闭；marker removal 属于基础清理，始终执行。
 - 编号开启时保留既有算法和输出格式，避免破坏需要层级编号的既有使用方式。
-- 两个模块使用小型纯函数和聚焦测试，不引入 parser 依赖、统一引擎、后端或持久化。
+- 三个模块使用小型纯函数和聚焦测试，不引入 parser 依赖、统一引擎、后端或持久化。

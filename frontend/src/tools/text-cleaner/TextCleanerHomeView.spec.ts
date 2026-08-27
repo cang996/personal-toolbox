@@ -10,6 +10,7 @@ function mountView() {
     routes: [
       { path: '/tools/text-cleaner/pdf', component: { template: '<div>PDF page</div>' } },
       { path: '/tools/text-cleaner/markdown', component: { template: '<div>Markdown page</div>' } },
+      { path: '/tools/text-cleaner/normalizer', component: { template: '<div>Normalizer page</div>' } },
     ],
   })
 
@@ -29,6 +30,14 @@ describe('TextCleanerHomeView', () => {
 
     expect(wrapper.text()).toContain('Markdown 格式清理')
     expect(wrapper.find('a[href="/tools/text-cleaner/markdown"]').exists()).toBe(true)
+  })
+
+  it('shows the text normalizer linked to its route', () => {
+    const wrapper = mountView()
+
+    expect(wrapper.text()).toContain('文本规范化')
+    expect(wrapper.find('a[href="/tools/text-cleaner/normalizer"]').exists()).toBe(true)
+    expect(wrapper.findAll('a.cleaner-card')).toHaveLength(3)
   })
 
   it('does not show redundant availability badges', () => {

@@ -9,7 +9,7 @@ import {
   readRecentTool,
   recordRecentToolPath,
 } from './recentTool'
-import { markdownTextCleanerTool, textCompareTool } from './tools'
+import { markdownTextCleanerTool, textCompareTool, textNormalizerTool } from './tools'
 
 function createMemoryStorage(): PreferenceStorage {
   const values = new Map<string, string>()
@@ -31,6 +31,7 @@ function createTrackingRouter() {
       { path: '/', component: { template: '<div>Home</div>' } },
       { path: textCompareTool.path, component: { template: '<div>Compare</div>' } },
       { path: markdownTextCleanerTool.path, component: { template: '<div>Markdown</div>' } },
+      { path: textNormalizerTool.path, component: { template: '<div>Normalizer</div>' } },
     ],
   })
 }
@@ -80,5 +81,21 @@ describe('recent tool tracking', () => {
     storage.write(storageKeys.lastUsedTool, '{"schemaVersion":1,"toolId":"unknown"}')
 
     expect(readRecentTool(storage)).toBeNull()
+  })
+
+  it('records and restores the text normalizer as a concrete recent tool', async () => {
+    const storage = createMemoryStorage()
+    const router = createTrackingRouter()
+    installRecentToolTracking(router, storage, () => new Date('2026-08-27T12:00:00.000Z'))
+
+    await router.push(textNormalizerTool.path)
+    await router.isReady()
+
+    expect(readRecentTool(storage)).toMatchObject({
+      id: textNormalizerTool.id,
+      name: textNormalizerTool.name,
+      path: textNormalizerTool.path,
+      usedAt: '2026-08-27T12:00:00.000Z',
+    })
   })
 })
