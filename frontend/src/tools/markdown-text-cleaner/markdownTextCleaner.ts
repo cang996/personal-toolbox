@@ -1,6 +1,22 @@
 export interface MarkdownTextCleanerOptions {
   preserveLinkUrls: boolean
   numberHeadings?: boolean
+  cleanCopyResidue?: boolean
+}
+
+interface FenceDelimiter {
+  marker: '`' | '~'
+  length: number
+}
+
+interface OutputLine {
+  text: string
+  protected: boolean
+}
+
+interface HeadingNumberingContext {
+  counters: number[]
+  depthOffset: number
 }
 
 const horizontalRule = /^\s{0,3}(?:[-*_]\s*){3,}$/
@@ -16,6 +32,7 @@ const escapedCharacter = /\\(\*+|_+|~+|[!"#$%&'()+,\-./:;<=>?@[\\\]^`{|}])/g
 const cjkCharacter = /[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]/
 const escapedPlaceholderStart = '\uE100'
 const escapedPlaceholderEnd = '\uE101'
+const existingHeadingNumber = /^((?:\d+\.)|(?:\d+(?:\.\d+)+\.?))[ \t]+(?=\S)/
 
 function protectEscapedMarkdown(value: string, fragments: string[]): string {
   return value.replace(escapedCharacter, (_match, characters: string) => {
@@ -26,6 +43,23 @@ function protectEscapedMarkdown(value: string, fragments: string[]): string {
 
 function restoreEscapedMarkdown(value: string, fragments: string[]): string {
   return value.replace(/\uE100(\d+)\uE101/g, (_match, index: string) => fragments[Number(index)] ?? '')
+}
+
+function findFenceOpener(line: string): FenceDelimiter | null {
+  const match = line.match(/^\s{0,3}(`{3,}|~{3,})/)
+  const delimiter = match?.[1]
+  if (!delimiter) return null
+
+  const marker = delimiter[0]
+  if (marker !== '`' && marker !== '~') return null
+
+  return { marker, length: delimiter.length }
+}
+
+function isFenceCloser(line: string, opener: FenceDelimiter): boolean {
+  const match = line.match(/^\s{0,3}(`+|~+)[ \t]*$/)
+  const delimiter = match?.[1]
+  return Boolean(delimiter && delimiter[0] === opener.marker && delimiter.length >= opener.length)
 }
 
 function replaceInlineLinks(
@@ -104,6 +138,43 @@ function removeEmphasisMarkers(value: string): string {
     .replace(/(^|[^_])_([^_\n]+)_/g, '$1$2')
 }
 
+function protectInlineCode(value: string, protect: (content: string) => string): string {
+  let result = ''
+  let cursor = 0
+
+  while (cursor < value.length) {
+    const openerStart = value.indexOf('`', cursor)
+    if (openerStart === -1) return result + value.slice(cursor)
+
+    let openerEnd = openerStart
+    while (value[openerEnd] === '`') openerEnd += 1
+    const delimiterLength = openerEnd - openerStart
+    let closerStart = openerEnd
+
+    while (closerStart < value.length) {
+      closerStart = value.indexOf('`', closerStart)
+      if (closerStart === -1) return result + value.slice(cursor)
+
+      let closerEnd = closerStart
+      while (value[closerEnd] === '`') closerEnd += 1
+      if (closerEnd - closerStart === delimiterLength) {
+        result += value.slice(cursor, openerStart)
+        result += protect(value.slice(openerEnd, closerStart))
+        cursor = closerEnd
+        break
+      }
+
+      closerStart = closerEnd
+    }
+  }
+
+  return result
+}
+
+function removeCopyResidue(value: string): string {
+  return value.replace(/[\u200B\u00AD\uFEFF]/g, '').replace(/\u00A0/g, ' ')
+}
+
 function cleanInlineMarkdown(value: string, options: MarkdownTextCleanerOptions): string {
   const protectedFragments: string[] = []
   const protect = (content: string) => {
@@ -111,15 +182,16 @@ function cleanInlineMarkdown(value: string, options: MarkdownTextCleanerOptions)
     return `\uE000${protectedFragments.length - 1}\uE001`
   }
   const protectedEscapes = value.replace(escapedCharacter, (_match, characters: string) => protect(characters))
-  const protectedCode = protectedEscapes.replace(/`([^`]+)`/g, (_match, content: string) => protect(content))
+  const protectedCode = protectInlineCode(protectedEscapes, protect)
   const withImages = protectedCode.replace(image, '$1')
   const withLinks = replaceInlineLinks(withImages, options, protect)
 
   const withoutFormatting = withLinks
     .replace(referenceLink, '$1')
     .replace(autoLink, (_match, url: string) => protect(url))
+  const normalizedProse = options.cleanCopyResidue ? removeCopyResidue(withoutFormatting) : withoutFormatting
 
-  return removeEmphasisMarkers(withoutFormatting)
+  return removeEmphasisMarkers(normalizedProse)
     .replace(/\uE000(\d+)\uE001/g, (_match, index: string) => protectedFragments[Number(index)] ?? '')
 }
 
@@ -127,20 +199,40 @@ function isOrdinarySetextText(line: string): boolean {
   return Boolean(line.trim()) && !atxHeading.test(line) && !blockquote.test(line) && !unorderedList.test(line) && !taskList.test(line)
 }
 
-function formatHeading(level: number, content: string, counters: number[], numberHeadings: boolean): string {
+function formatHeading(
+  level: number,
+  content: string,
+  context: HeadingNumberingContext,
+  numberHeadings: boolean,
+): string {
   if (!numberHeadings) return content
 
-  for (let index = 0; index < level - 1; index += 1) {
-    if (counters[index] === 0) counters[index] = 1
-  }
-  const currentIndex = level - 1
-  counters[currentIndex] = (counters[currentIndex] ?? 0) + 1
-  for (let index = level; index < counters.length; index += 1) {
-    counters[index] = 0
+  const existingNumber = content.match(existingHeadingNumber)?.[1]
+  if (existingNumber) {
+    const components = existingNumber
+      .replace(/\.$/, '')
+      .split('.')
+      .map(Number)
+
+    for (let index = 0; index < context.counters.length; index += 1) {
+      context.counters[index] = components[index] ?? 0
+    }
+    context.depthOffset = components.length - level
+    return content
   }
 
-  const number = counters.slice(0, level).join('.')
-  return `${level === 1 ? `${number}.` : number} ${content}`
+  const numberingDepth = Math.min(Math.max(level + context.depthOffset, 1), context.counters.length)
+  for (let index = 0; index < numberingDepth - 1; index += 1) {
+    if (context.counters[index] === 0) context.counters[index] = 1
+  }
+  const currentIndex = numberingDepth - 1
+  context.counters[currentIndex] = (context.counters[currentIndex] ?? 0) + 1
+  for (let index = numberingDepth; index < context.counters.length; index += 1) {
+    context.counters[index] = 0
+  }
+
+  const number = context.counters.slice(0, numberingDepth).join('.')
+  return `${numberingDepth === 1 ? `${number}.` : number} ${content}`
 }
 
 function cleanNormalLine(line: string, options: MarkdownTextCleanerOptions): string {
@@ -163,23 +255,52 @@ function cleanNormalLine(line: string, options: MarkdownTextCleanerOptions): str
   return cleanInlineMarkdown(withoutQuotes, options).replace(/[ \t]+$/g, '')
 }
 
+function normalizeOutput(lines: OutputLine[]): string {
+  const normalized: OutputLine[] = []
+
+  for (const line of lines) {
+    const previous = normalized.at(-1)
+    if (!line.protected && line.text === '' && previous && !previous.protected && previous.text === '') {
+      continue
+    }
+    normalized.push(line)
+  }
+
+  while (normalized[0] && !normalized[0].protected && normalized[0].text === '') normalized.shift()
+  while (normalized.at(-1) && !normalized.at(-1)!.protected && normalized.at(-1)!.text === '') normalized.pop()
+
+  if (normalized[0] && !normalized[0].protected) normalized[0].text = normalized[0].text.trimStart()
+  if (normalized.at(-1) && !normalized.at(-1)!.protected) normalized.at(-1)!.text = normalized.at(-1)!.text.trimEnd()
+
+  return normalized.map((line) => line.text).join('\n')
+}
+
 export function cleanMarkdownText(input: string, options: MarkdownTextCleanerOptions): string {
-  const lines = input.replace(/\r\n?/g, '\n').split('\n')
-  const output: string[] = []
-  const headingCounters = [0, 0, 0, 0, 0, 0]
-  let inCodeBlock = false
+  const withoutLeadingBom = input.startsWith('\uFEFF') ? input.slice(1) : input
+  const lines = withoutLeadingBom.replace(/\r\n?/g, '\n').split('\n')
+  const output: OutputLine[] = []
+  const headingNumberingContext: HeadingNumberingContext = {
+    counters: [0, 0, 0, 0, 0, 0],
+    depthOffset: 0,
+  }
+  let activeFence: FenceDelimiter | null = null
 
   for (let index = 0; index < lines.length; index += 1) {
     const sourceLine = lines[index] ?? ''
     const nextLine = lines[index + 1]
 
-    if (/^\s*```/.test(sourceLine) || /^\s*~~~/.test(sourceLine)) {
-      inCodeBlock = !inCodeBlock
+    if (activeFence) {
+      if (isFenceCloser(sourceLine, activeFence)) {
+        activeFence = null
+      } else {
+        output.push({ text: sourceLine, protected: true })
+      }
       continue
     }
 
-    if (inCodeBlock) {
-      output.push(sourceLine)
+    const opener = findFenceOpener(sourceLine)
+    if (opener) {
+      activeFence = opener
       continue
     }
 
@@ -191,9 +312,17 @@ export function cleanMarkdownText(input: string, options: MarkdownTextCleanerOpt
     if (atx) {
       const marker = atx[1] ?? ''
       const content = atx[2] ?? ''
-      output.push(
-        restoreLine(formatHeading(marker.length, cleanInlineMarkdown(content, options), headingCounters, options.numberHeadings ?? false)),
-      )
+      output.push({
+        text: restoreLine(
+          formatHeading(
+            marker.length,
+            cleanInlineMarkdown(content, options),
+            headingNumberingContext,
+            options.numberHeadings ?? false,
+          ),
+        ),
+        protected: false,
+      })
       continue
     }
 
@@ -201,9 +330,17 @@ export function cleanMarkdownText(input: string, options: MarkdownTextCleanerOpt
     if (setext && isOrdinarySetextText(line)) {
       const marker = setext[1] ?? ''
       const level = marker.startsWith('=') ? 1 : 2
-      output.push(
-        restoreLine(formatHeading(level, cleanInlineMarkdown(line.trim(), options), headingCounters, options.numberHeadings ?? false)),
-      )
+      output.push({
+        text: restoreLine(
+          formatHeading(
+            level,
+            cleanInlineMarkdown(line.trim(), options),
+            headingNumberingContext,
+            options.numberHeadings ?? false,
+          ),
+        ),
+        protected: false,
+      })
       index += 1
       continue
     }
@@ -212,12 +349,8 @@ export function cleanMarkdownText(input: string, options: MarkdownTextCleanerOpt
       continue
     }
 
-    output.push(restoreLine(cleanNormalLine(line, options)))
+    output.push({ text: restoreLine(cleanNormalLine(line, options)), protected: false })
   }
 
-  return output
-    .join('\n')
-    .replace(/\n[ \t]+\n/g, '\n\n')
-    .replace(/\n{3,}/g, '\n\n')
-    .trim()
+  return normalizeOutput(output)
 }

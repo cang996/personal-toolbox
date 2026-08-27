@@ -1,3 +1,5 @@
+import { countCharacters, countLines } from '@/shared/text/textStatistics'
+
 import type {
   DiffLine,
   DiffSegment,
@@ -6,6 +8,8 @@ import type {
   TextDiffOptions,
   TextDiffResult,
 } from './types'
+
+export { countCharacters, countLines }
 
 interface ComparableLine {
   text: string
@@ -57,18 +61,6 @@ export function compareTexts(
 
 export function normalizeNewlines(text: string): string {
   return text.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
-}
-
-export function countLines(text: string): number {
-  if (text.length === 0) {
-    return 0
-  }
-
-  return normalizeNewlines(text).split('\n').length
-}
-
-export function countCharacters(text: string): number {
-  return splitCharacters(text).length
 }
 
 export function calculateLineSimilarity(oldText: string, newText: string): number {

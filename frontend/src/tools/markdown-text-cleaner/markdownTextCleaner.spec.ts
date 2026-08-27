@@ -5,6 +5,7 @@ import { cleanMarkdownText } from './markdownTextCleaner'
 describe('cleanMarkdownText', () => {
   const withoutUrls = { preserveLinkUrls: false }
   const withoutUrlsNumbered = { preserveLinkUrls: false, numberHeadings: true }
+  const withCopyResidueCleanup = { preserveLinkUrls: false, cleanCopyResidue: true }
 
   it('removes ATX heading markers without numbering by default', () => {
     expect(cleanMarkdownText('# 第一部分\n## 背景\n### 目标', withoutUrls)).toBe('第一部分\n背景\n目标')
@@ -24,6 +25,44 @@ describe('cleanMarkdownText', () => {
     expect(cleanMarkdownText('Project Title\n=============\n\nSection\n-------\n\n---', withoutUrlsNumbered)).toBe(
       '1. Project Title\n\n1.1 Section',
     )
+  })
+
+  it('preserves existing Arabic heading numbers and uses them as later numbering context', () => {
+    expect(cleanMarkdownText('# 2. Existing', withoutUrlsNumbered)).toBe('2. Existing')
+    expect(cleanMarkdownText('# 2. Existing\n## Background', withoutUrlsNumbered)).toBe('2. Existing\n2.1 Background')
+    expect(cleanMarkdownText('# 2. Existing\n## 2.3 Existing child', withoutUrlsNumbered)).toBe(
+      '2. Existing\n2.3 Existing child',
+    )
+    expect(cleanMarkdownText('# 3. Chapter\n## 3.2 Existing\n### Detail', withoutUrlsNumbered)).toBe(
+      '3. Chapter\n3.2 Existing\n3.2.1 Detail',
+    )
+  })
+
+  it('preserves inconsistent user numbering instead of correcting it', () => {
+    expect(cleanMarkdownText('# 2. Existing\n## 5. Background\n### Detail\n#### Deep', withoutUrlsNumbered)).toBe(
+      '2. Existing\n5. Background\n5.1 Detail\n5.1.1 Deep',
+    )
+  })
+
+  it('resets numbering depth when a later explicit number overrides generated context', () => {
+    expect(cleanMarkdownText('# 2. Existing\n## Background\n### 8. Override\n#### Detail', withoutUrlsNumbered)).toBe(
+      '2. Existing\n2.1 Background\n8. Override\n8.1 Detail',
+    )
+  })
+
+  it('keeps explicit-number headings unchanged when automatic numbering is disabled', () => {
+    expect(cleanMarkdownText('# 2. Existing\n## 5. Background\n### Detail', withoutUrls)).toBe(
+      '2. Existing\n5. Background\nDetail',
+    )
+  })
+
+  it('does not mistake other number-bearing titles for hierarchical numbering', () => {
+    const input = '# 2026 Results\n# 3D Printing\n# Python 3.14\n# Version 2\n# Chapter 2'
+
+    expect(cleanMarkdownText(input, withoutUrlsNumbered)).toBe(
+      '1. 2026 Results\n2. 3D Printing\n3. Python 3.14\n4. Version 2\n5. Chapter 2',
+    )
+    expect(cleanMarkdownText('# 2. Existing', withoutUrls)).toBe('2. Existing')
   })
 
   it('converts unordered and task lists while preserving indentation', () => {
@@ -52,6 +91,72 @@ describe('cleanMarkdownText', () => {
 
     expect(cleanMarkdownText(input, withoutUrls)).toBe(
       '粗体\n斜体\n粗斜体\n删除线\nuser_name\nfile_name.txt\nnpm install\n\nnpm run dev',
+    )
+  })
+
+  it('matches fenced code by marker type and minimum closer length', () => {
+    const backticks = '```'
+    const tildes = '~~~'
+    const input = [backticks, '**raw**', tildes, '# still raw', backticks, '', '# Cleaned'].join('\n')
+
+    expect(cleanMarkdownText(input, withoutUrlsNumbered)).toBe(
+      ['**raw**', tildes, '# still raw', '', '1. Cleaned'].join('\n'),
+    )
+    expect(cleanMarkdownText([tildes, '*raw*', tildes].join('\n'), withoutUrls)).toBe('*raw*')
+  })
+
+  it('does not close a longer fence with a shorter delimiter', () => {
+    const triple = '```'
+    const quadruple = '````'
+    const input = [quadruple, '**raw**', triple, '# raw', quadruple].join('\n')
+
+    expect(cleanMarkdownText(input, withoutUrlsNumbered)).toBe(['**raw**', triple, '# raw'].join('\n'))
+  })
+
+  it('preserves fenced blank lines, trailing spaces, Markdown, and separate blocks', () => {
+    const fence = '```'
+    const input = [fence, '**first**  ', '', '', '# raw', fence, '', '~~~', '*second*', '~~~'].join('\n')
+    const expected = ['**first**  ', '', '', '# raw', '', '*second*'].join('\n')
+
+    expect(cleanMarkdownText(input, withCopyResidueCleanup)).toBe(expected)
+  })
+
+  it('keeps the remainder of an unclosed fence as raw code-like text', () => {
+    const fence = '```'
+    const input = ['Before', fence, '**raw**', '', '', '# raw'].join('\n')
+
+    expect(cleanMarkdownText(input, withoutUrlsNumbered)).toBe(['Before', '**raw**', '', '', '# raw'].join('\n'))
+  })
+
+  it('supports basic multiple-backtick inline code and protects its content', () => {
+    const input = 'Before ``code ` **inside** \u200B\u00A0\u00AD\uFEFF`` and **outside\u200B**.'
+
+    expect(cleanMarkdownText(input, withCopyResidueCleanup)).toBe(
+      'Before code ` **inside** \u200B\u00A0\u00AD\uFEFF and outside.',
+    )
+  })
+
+  it('keeps copy residue by default and cleans only the requested prose characters when enabled', () => {
+    const input = 'A\u200BB\u00ADC\u00A0D\uFEFFE\u200CF\u200DG'
+
+    expect(cleanMarkdownText(input, withoutUrls)).toBe(input)
+    expect(cleanMarkdownText(input, withCopyResidueCleanup)).toBe('ABC DE\u200CF\u200DG')
+  })
+
+  it('always removes one document-start BOM but only removes internal BOM when enabled', () => {
+    const input = '\uFEFFStart\uFEFFMiddle'
+
+    expect(cleanMarkdownText(input, withoutUrls)).toBe('Start\uFEFFMiddle')
+    expect(cleanMarkdownText(input, withCopyResidueCleanup)).toBe('StartMiddle')
+  })
+
+  it('preserves copy residue inside fenced and inline code when cleanup is enabled', () => {
+    const fence = '```'
+    const residue = '\u200B\u00AD\u00A0\uFEFF'
+    const input = [fence, `fenced${residue}`, fence, `inline \`code${residue}\` prose${residue}`].join('\n')
+
+    expect(cleanMarkdownText(input, withCopyResidueCleanup)).toBe(
+      [`fenced${residue}`, `inline code${residue} prose`].join('\n'),
     )
   })
 

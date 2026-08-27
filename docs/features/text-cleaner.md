@@ -96,7 +96,7 @@ textarea string + local option refs
 
 ### 8.1 Input model
 
-`cleanMarkdownText(input, options)` 接受 Markdown 字符串；`preserveLinkUrls` 控制内联链接是否输出 URL，`numberHeadings` 控制是否为识别出的标题加层级编号。`numberHeadings` 缺省为 `false`，页面初始值和清空后的值也都是关闭。
+`cleanMarkdownText(input, options)` 接受 Markdown 字符串；`preserveLinkUrls` 控制内联链接是否输出 URL，`numberHeadings` 控制是否为识别出的标题加层级编号，`cleanCopyResidue` 控制是否清理普通文本中的指定复制残留字符。三个页面选项初始值和清空后的值都是 `false`；后两个 utility 选项缺省时也按 `false` 处理。
 
 ### 8.2 Block processing rules
 
@@ -104,9 +104,11 @@ textarea string + local option refs
 - 识别一级/二级 Setext 标题，并删除下一行的 `=`/`-` 标记。
 - 标题编号关闭时只保留清理后的标题文字；标题识别与 marker 删除仍然执行。
 - 标题编号开启时沿用原有六级计数算法：当前层递增、更深层清零、跳级时缺失的父级补为 `1`；一级显示为 `1. Title`，更深层显示为 `1.1 Title`。
+- 标题文字以明确的阿拉伯层级编号开头时（如 `2. Title`、`2.1 Title`、`10.2.3 Title`），该编号原样保留，不再重复添加；其数字 components 会重置自动编号 context。后续未编号标题根据它与该显式标题的相对 Markdown 层级追加、递增或收回 component，例如 H2 的 `5. Title` 后接 H3 会得到 `5.1`，不会因绝对 H3 层级补成 `5.1.1`。Cleaner 不纠正用户已有编号是否连续或与 Markdown 层级一致。
 - 独立 horizontal rule 被删除；Markdown 表格中的分隔行不会被当作独立 horizontal rule。
 - 无序列表标记转成 `•`，任务列表转成 `☑`/`☐`，并保留缩进。
-- 代码围栏本身被删除，围栏内文本保持原样；行内反引号被删除，内容受到保护。
+- 代码围栏本身被删除，opener 的反引号/波浪线类型和长度会被记录；closer 必须使用相同 marker，且长度不能短于 opener。围栏内的 Markdown、空格、空行及 Unicode 字符按原始行保留。
+- 未闭合围栏的 opener 仍会删除，其后的剩余内容按 code-like raw text 保留，不继续执行 Markdown 清理。
 - blockquote 的 `>` 层级标记被删除。
 
 ### 8.3 Inline rules
@@ -116,23 +118,28 @@ textarea string + local option refs
 - 普通内联链接和 reference link 保留 label；开启“保留链接 URL”时，普通内联链接输出为 `label（URL）`。
 - autolink 的 URL 或邮箱保持可见。
 - 受支持的反斜杠转义字符最终恢复为字面字符，不再被当作 Markdown 语法。
-- URL、行内代码和转义片段在其他正则清理期间使用内部 placeholder 保护，随后恢复。
-- 换行统一为 LF，连续三个以上换行压缩为两个，最后裁掉首尾空白。
+- 单反引号及基本的同长度多反引号行内代码会删除 delimiter 并保护内容，例如双反引号可以容纳一个字面反引号。URL、行内代码和转义片段在其他正则清理期间使用内部 placeholder 保护，随后恢复。
+- 文档开头的一个 U+FEFF BOM 始终移除。开启“清理复制残留字符”后，普通文本中的 U+200B zero-width space、U+00AD soft hyphen 和内部 U+FEFF 会删除，U+00A0 NBSP 会转为 ASCII space；U+200C ZWNJ 与 U+200D ZWJ 始终保留。fenced code 和 inline code 不执行这些替换。
+- 换行统一为 LF；围栏外的连续空行压缩为一个空行并裁掉文档外围空白，围栏内空行不参与该规范化。
 
-### 8.4 Edge cases
+### 8.4 Statistics
 
-链接 URL 支持平衡的嵌套圆括号和可选 title；格式不完整的强调、链接、行内代码和单独反斜杠尽量原样保留。该实现不是 CommonMark parser，复杂嵌套、HTML、脚注、定义列表和非标准扩展不保证完全保真。
+页面在输入区实时显示原文字符数和行数；清理成功后在结果区显示当前有效结果的字符数和行数，输入或任一选项变化导致结果失效时，旧结果统计同步隐藏。字符数按 Unicode code point（`Array.from(text).length`）计算；行数先把 CRLF/CR 统一为 LF，空字符串为 0 行，其他文本为换行数加一，因此末尾带换行的 `"a\n"` 为 2 行。
+
+### 8.5 Edge cases
+
+链接 URL 支持平衡的嵌套圆括号和可选 title；格式不完整的强调、链接、行内代码和单独反斜杠尽量原样保留。多反引号行内代码只做有限的同长度 delimiter 支持；围栏 opener 也采用面向当前清理需求的保守识别。该实现仍不是 CommonMark parser，复杂嵌套、HTML、脚注、定义列表和非标准扩展不保证完全保真。
 
 ## 9. Shared Logic
 
-两个 cleaner 仅共享应用级 `ToolPageLayout`、路由和浏览器剪贴板能力。其分类规则、选项和转换函数语义不同，因此没有抽成统一 cleaner engine。Vue 组件也不直接访问 `localStorage` 或 IndexedDB。
+两个 cleaner 共享应用级 `ToolPageLayout`、路由和浏览器剪贴板能力，但分类规则、选项和转换函数语义仍分别留在各自模块，没有统一 cleaner engine。Markdown Cleaner 与 Text Compare 共同使用无组件依赖的字符/行计数 helper；Text Compare 原有计数导出与行为保持不变。Vue 组件也不直接访问 `localStorage` 或 IndexedDB。
 
 ## 10. Input/Output Contract
 
 | Module | Input | Options | Output |
 | --- | --- | --- | --- |
 | PDF | pasted text string | `removeCjkLatinSpaces: boolean` | cleaned plain-text string |
-| Markdown | Markdown string | `preserveLinkUrls: boolean`; optional `numberHeadings: boolean` | cleaned plain-text string |
+| Markdown | Markdown string | `preserveLinkUrls: boolean`; optional `numberHeadings: boolean`; optional `cleanCopyResidue: boolean` | cleaned plain-text string |
 
 函数是同步、确定性、无副作用的纯转换；空字符串都得到空字符串。页面负责拒绝只有空白的交互输入，但 utility 本身仍可直接测试。
 
@@ -145,8 +152,9 @@ textarea string + local option refs
 - `TextCleanerHomeView.spec.ts` 保护两个子模块入口及路由。
 - `pdfTextCleaner.spec.ts` 覆盖换行合并、CJK/拉丁空格、段落、列表、标题、标签、URL、邮箱、代码、数字与完整回归样本。
 - `PdfTextCleanerView.spec.ts` 覆盖显式执行、结果失效、默认选项、清空和复制失败。
-- `markdownTextCleaner.spec.ts` 覆盖 block/inline 规则、转义保护、畸形输入、URL 圆括号、代码、标题默认不编号及开启后的原编号算法。
-- `MarkdownTextCleanerView.spec.ts` 覆盖执行、结果失效、两个选项的默认/清空行为、编号切换和剪贴板反馈。
+- `markdownTextCleaner.spec.ts` 覆盖 block/inline 规则、转义保护、畸形输入、URL 圆括号、严格 fence 边界、代码内空白、复制残留字符、已有标题编号 context，以及标题默认不编号和原六级算法。
+- `MarkdownTextCleanerView.spec.ts` 覆盖执行、结果失效、三个选项的默认/清空行为、复制残留开关、编号切换、输入/结果统计和剪贴板反馈。
+- `shared/text/textStatistics.spec.ts` 固定 Unicode code point 字符数以及 LF/CRLF/CR、空文本和末尾换行的行数语义。
 
 ## 13. Known Limitations
 
