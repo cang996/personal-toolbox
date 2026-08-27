@@ -67,36 +67,42 @@ textarea string + local option refs
 
 ### 7.1 Input model
 
-`cleanPdfText(input, { removeCjkLatinSpaces })` 接受任意字符串和一个必填布尔选项。页面默认开启“移除中文与英文之间的空格”。输入可能包含 CRLF、复制时产生的逐字换行、段落空行、列表、标题、URL、邮箱或简单代码。
+`cleanPdfText(input, { removeCjkLatinSpaces, cleanCopyResidue? })` 接受任意字符串、一个必填空格选项和一个可选复制残留清理选项。页面默认开启“移除中文与英文之间的空格”，默认关闭“清理复制残留字符”。输入可能包含 CRLF、复制时产生的逐字换行、段落空行、列表、标题、URL、邮箱或简单代码。
 
 ### 7.2 Processing pipeline
 
-1. 将 CRLF/CR 统一为 LF，并逐行分类。
-2. 用保守启发式把行识别为：空行、编号标题、普通标题、标签标题、列表项、独立 URL、独立邮箱、代码行或正文。
-3. 保留结构边界；把看起来属于同一段落或列表项续行的异常换行合并。
-4. 按 CJK/拉丁字符和标点语义决定连接时是否插入空格。
-5. 清理确定性的空格模式，并恢复部分被复制换行打散的中文结构。
-6. 合并多余空段并裁掉首尾空白。
+1. 始终移除文档开头的一个 U+FEFF BOM，将 CRLF/CR 统一为 LF，并为每个原始行提取确定性的分类信息。
+2. 区分明确编号、标签、列表、URL、邮箱、代码和技术行等强结构信号，以及需要相邻上下文确认的弱标题候选。
+3. 按固定优先级对每一对相邻行独立决定保留换行、带一个空格合并或不带空格合并。
+4. 根据这些局部决定拼装段落；一个标题只保护标题到首行正文的边界，不会继续阻止正文内部的换行恢复。
+5. 拼装完成后，根据选项对 eligible text 执行复制残留字符清理，再执行既有排版空格清理；这些阶段不重新决定段落结构。
+6. 仅对源文本已经坍缩在同一行的有限中文章节、编号和标签模式做兼容恢复，最后合并多余空段并裁掉首尾空白。
 
 ### 7.3 Preserved structure and spacing rules
 
-- 段落空行、受支持的标题、短标签、URL、邮箱和简单代码保持独立。
-- `•`、`●`、带空格的 `-`/`*`、数字列表和全角括号数字可作为列表起点；负数、年份和数学表达式有单独保护。
+- 段落空行、强结构标题、经上下文确认的弱标题、短标签、URL、邮箱和简单代码保持独立；短英文或纯汉字行本身不足以确定为标题。
+- `•`、`●`、带空格的 `-`/`*`、数字列表和全角括号数字可作为列表起点；新列表项保持独立，明确缩进等可信续行才会并入列表项，普通独立正文不会仅因跟在列表后而被吞入。
 - 英文断行用空格连接；CJK 相邻字符、CJK 标点附近的断行通常直接连接。
 - CJK 字符之间的异常空格始终清理；CJK 与拉丁字符之间的空格是否清理由页面选项决定。
 - 小数点、货币符号、百分号、时间/比例、版本号及常见中英文标点的空格会按已测试规则规范化。
-- 连字符结尾、短完整句、技术字段和多行代码使用额外边界规则，避免盲目拼接。
+- 两个明确完整句、技术字段和多行代码使用额外边界规则，避免盲目拼接。连字符结尾的断行仍按保守方式保留，不自动执行 dehyphenation。
+- 开启复制残留清理后，普通正文、标题、列表、标签、符号和技术行中的 U+200B zero-width space、U+00AD soft hyphen 与内部 U+FEFF 会删除，U+00A0 NBSP 会转为 ASCII space；U+200C ZWNJ 与 U+200D ZWJ 始终保留。代码行、独立 URL 和独立邮箱跳过该清理，原始内容保持不变。
+- U+00AD soft hyphen 与 ASCII `-` 是不同字符；普通连字符不会被删除，也不会跨行恢复单词。
 - 当前仅专门恢复“谁：”“什么：”“地点：”“原因：”等短标签，以及有限的中文章节、编号和行内标签模式。
 
-### 7.4 Output and edge cases
+### 7.4 Statistics
 
-输出始终是一个纯文本字符串。空白输入输出空字符串。算法刻意采用启发式而非版面分析：未知标题形式、复杂代码、表格、多栏 PDF、OCR 错字及语义模糊的短行可能无法恢复成原始排版。
+页面在输入区实时显示原文字符数和行数；清理成功后在结果区显示当前有效结果的字符数和行数，输入或任一选项变化导致结果失效时，旧结果统计同步隐藏。PDF Cleaner 直接复用 `shared/text/textStatistics.ts`：字符数按 Unicode code point 计算，行数沿用 LF/CRLF/CR、空文本和末尾换行的共享定义。
+
+### 7.5 Output and edge cases
+
+输出始终是一个纯文本字符串。空白输入输出空字符串。算法刻意采用启发式而非版面分析，不能保证 100% 恢复原 PDF 布局；未知标题形式、复杂代码、表格及语义模糊的短行仍可能判断错误。产品不读取版面元数据，也不负责多栏重建、页眉页脚移除、OCR 或 PDF 文件解析。
 
 ## 8. Markdown Text Cleaner
 
 ### 8.1 Input model
 
-`cleanMarkdownText(input, options)` 接受 Markdown 字符串；`preserveLinkUrls` 控制内联链接是否输出 URL，`numberHeadings` 控制是否为识别出的标题加层级编号。`numberHeadings` 缺省为 `false`，页面初始值和清空后的值也都是关闭。
+`cleanMarkdownText(input, options)` 接受 Markdown 字符串；`preserveLinkUrls` 控制内联链接是否输出 URL，`numberHeadings` 控制是否为识别出的标题加层级编号，`cleanCopyResidue` 控制是否清理普通文本中的指定复制残留字符。三个页面选项初始值和清空后的值都是 `false`；后两个 utility 选项缺省时也按 `false` 处理。
 
 ### 8.2 Block processing rules
 
@@ -104,9 +110,11 @@ textarea string + local option refs
 - 识别一级/二级 Setext 标题，并删除下一行的 `=`/`-` 标记。
 - 标题编号关闭时只保留清理后的标题文字；标题识别与 marker 删除仍然执行。
 - 标题编号开启时沿用原有六级计数算法：当前层递增、更深层清零、跳级时缺失的父级补为 `1`；一级显示为 `1. Title`，更深层显示为 `1.1 Title`。
+- 标题文字以明确的阿拉伯层级编号开头时（如 `2. Title`、`2.1 Title`、`10.2.3 Title`），该编号原样保留，不再重复添加；其数字 components 会重置自动编号 context。后续未编号标题根据它与该显式标题的相对 Markdown 层级追加、递增或收回 component，例如 H2 的 `5. Title` 后接 H3 会得到 `5.1`，不会因绝对 H3 层级补成 `5.1.1`。Cleaner 不纠正用户已有编号是否连续或与 Markdown 层级一致。
 - 独立 horizontal rule 被删除；Markdown 表格中的分隔行不会被当作独立 horizontal rule。
 - 无序列表标记转成 `•`，任务列表转成 `☑`/`☐`，并保留缩进。
-- 代码围栏本身被删除，围栏内文本保持原样；行内反引号被删除，内容受到保护。
+- 代码围栏本身被删除，opener 的反引号/波浪线类型和长度会被记录；closer 必须使用相同 marker，且长度不能短于 opener。围栏内的 Markdown、空格、空行及 Unicode 字符按原始行保留。
+- 未闭合围栏的 opener 仍会删除，其后的剩余内容按 code-like raw text 保留，不继续执行 Markdown 清理。
 - blockquote 的 `>` 层级标记被删除。
 
 ### 8.3 Inline rules
@@ -116,23 +124,28 @@ textarea string + local option refs
 - 普通内联链接和 reference link 保留 label；开启“保留链接 URL”时，普通内联链接输出为 `label（URL）`。
 - autolink 的 URL 或邮箱保持可见。
 - 受支持的反斜杠转义字符最终恢复为字面字符，不再被当作 Markdown 语法。
-- URL、行内代码和转义片段在其他正则清理期间使用内部 placeholder 保护，随后恢复。
-- 换行统一为 LF，连续三个以上换行压缩为两个，最后裁掉首尾空白。
+- 单反引号及基本的同长度多反引号行内代码会删除 delimiter 并保护内容，例如双反引号可以容纳一个字面反引号。URL、行内代码和转义片段在其他正则清理期间使用内部 placeholder 保护，随后恢复。
+- 文档开头的一个 U+FEFF BOM 始终移除。开启“清理复制残留字符”后，普通文本中的 U+200B zero-width space、U+00AD soft hyphen 和内部 U+FEFF 会删除，U+00A0 NBSP 会转为 ASCII space；U+200C ZWNJ 与 U+200D ZWJ 始终保留。fenced code 和 inline code 不执行这些替换。
+- 换行统一为 LF；围栏外的连续空行压缩为一个空行并裁掉文档外围空白，围栏内空行不参与该规范化。
 
-### 8.4 Edge cases
+### 8.4 Statistics
 
-链接 URL 支持平衡的嵌套圆括号和可选 title；格式不完整的强调、链接、行内代码和单独反斜杠尽量原样保留。该实现不是 CommonMark parser，复杂嵌套、HTML、脚注、定义列表和非标准扩展不保证完全保真。
+页面在输入区实时显示原文字符数和行数；清理成功后在结果区显示当前有效结果的字符数和行数，输入或任一选项变化导致结果失效时，旧结果统计同步隐藏。字符数按 Unicode code point（`Array.from(text).length`）计算；行数先把 CRLF/CR 统一为 LF，空字符串为 0 行，其他文本为换行数加一，因此末尾带换行的 `"a\n"` 为 2 行。
+
+### 8.5 Edge cases
+
+链接 URL 支持平衡的嵌套圆括号和可选 title；格式不完整的强调、链接、行内代码和单独反斜杠尽量原样保留。多反引号行内代码只做有限的同长度 delimiter 支持；围栏 opener 也采用面向当前清理需求的保守识别。该实现仍不是 CommonMark parser，复杂嵌套、HTML、脚注、定义列表和非标准扩展不保证完全保真。
 
 ## 9. Shared Logic
 
-两个 cleaner 仅共享应用级 `ToolPageLayout`、路由和浏览器剪贴板能力。其分类规则、选项和转换函数语义不同，因此没有抽成统一 cleaner engine。Vue 组件也不直接访问 `localStorage` 或 IndexedDB。
+两个 cleaner 共享应用级 `ToolPageLayout`、路由和浏览器剪贴板能力，但分类规则、选项和转换函数语义仍分别留在各自模块，没有统一 cleaner engine。PDF Cleaner、Markdown Cleaner 与 Text Compare 共同使用无组件依赖的字符/行计数 helper；两个 cleaner 还共享只负责四项 Unicode 字符 mapping 的 `shared/text/copyResidue.ts`，各工具仍自行决定 protected regions。Text Compare 原有计数导出与行为保持不变。Vue 组件也不直接访问 `localStorage` 或 IndexedDB。
 
 ## 10. Input/Output Contract
 
 | Module | Input | Options | Output |
 | --- | --- | --- | --- |
-| PDF | pasted text string | `removeCjkLatinSpaces: boolean` | cleaned plain-text string |
-| Markdown | Markdown string | `preserveLinkUrls: boolean`; optional `numberHeadings: boolean` | cleaned plain-text string |
+| PDF | pasted text string | `removeCjkLatinSpaces: boolean`; optional `cleanCopyResidue: boolean` | cleaned plain-text string |
+| Markdown | Markdown string | `preserveLinkUrls: boolean`; optional `numberHeadings: boolean`; optional `cleanCopyResidue: boolean` | cleaned plain-text string |
 
 函数是同步、确定性、无副作用的纯转换；空字符串都得到空字符串。页面负责拒绝只有空白的交互输入，但 utility 本身仍可直接测试。
 
@@ -143,10 +156,12 @@ textarea string + local option refs
 ## 12. Tests
 
 - `TextCleanerHomeView.spec.ts` 保护两个子模块入口及路由。
-- `pdfTextCleaner.spec.ts` 覆盖换行合并、CJK/拉丁空格、段落、列表、标题、标签、URL、邮箱、代码、数字与完整回归样本。
-- `PdfTextCleanerView.spec.ts` 覆盖显式执行、结果失效、默认选项、清空和复制失败。
-- `markdownTextCleaner.spec.ts` 覆盖 block/inline 规则、转义保护、畸形输入、URL 圆括号、代码、标题默认不编号及开启后的原编号算法。
-- `MarkdownTextCleanerView.spec.ts` 覆盖执行、结果失效、两个选项的默认/清空行为、编号切换和剪贴板反馈。
+- `pdfTextCleaner.spec.ts` 覆盖换行合并、CJK/拉丁空格、段落、列表、标题、标签、URL、邮箱、代码、复制残留字符、protected lines、literal hyphen、数字与完整回归样本。
+- `PdfTextCleanerView.spec.ts` 覆盖显式执行、结果失效、两个选项的默认/清空行为、复制残留开关、输入/结果统计和复制失败。
+- `markdownTextCleaner.spec.ts` 覆盖 block/inline 规则、转义保护、畸形输入、URL 圆括号、严格 fence 边界、代码内空白、复制残留字符、已有标题编号 context，以及标题默认不编号和原六级算法。
+- `MarkdownTextCleanerView.spec.ts` 覆盖执行、结果失效、三个选项的默认/清空行为、复制残留开关、编号切换、输入/结果统计和剪贴板反馈。
+- `shared/text/textStatistics.spec.ts` 固定 Unicode code point 字符数以及 LF/CRLF/CR、空文本和末尾换行的行数语义。
+- `shared/text/copyResidue.spec.ts` 固定四项复制残留字符 mapping，并保护 ASCII literal hyphen。
 
 ## 13. Known Limitations
 
