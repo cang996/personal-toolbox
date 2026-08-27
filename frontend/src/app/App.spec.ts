@@ -4,7 +4,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 
 import App from '../App.vue'
 import { recordRecentToolPath } from './recentTool'
-import { exchangeRateTool, textCleanerTool, textCompareTool, tools } from './tools'
+import { exchangeRateTool, textCleanerTool, textCompareTool, textNormalizerTool, tools } from './tools'
 import { setTheme } from '@/shared/theme/useTheme'
 
 type MountedApp = Awaited<ReturnType<typeof mountAt>>
@@ -32,6 +32,10 @@ function createTestRouter() {
       {
         path: '/tools/text-cleaner/markdown',
         component: () => import('@/tools/markdown-text-cleaner/MarkdownTextCleanerView.vue'),
+      },
+      {
+        path: textNormalizerTool.path,
+        component: () => import('@/tools/text-normalizer/TextNormalizerView.vue'),
       },
       {
         path: '/:pathMatch(.*)*',
@@ -273,9 +277,11 @@ describe('App', () => {
 
     expect(entry.text()).toContain('PDF 复制文本清理')
     expect(entry.text()).toContain('Markdown 格式清理')
+    expect(entry.text()).toContain('文本规范化')
     expect(entry.text()).not.toContain('可用')
     expect(entry.find('a[href="/tools/text-cleaner/pdf"]').exists()).toBe(true)
     expect(entry.find('a[href="/tools/text-cleaner/markdown"]').exists()).toBe(true)
+    expect(entry.find(`a[href="${textNormalizerTool.path}"]`).exists()).toBe(true)
 
     const tool = await mountAt('/tools/text-cleaner/pdf')
     expect(tool.text()).toContain('PDF 复制文本清理')
@@ -292,6 +298,14 @@ describe('App', () => {
 
     expect(markdown.text()).toContain('Markdown 格式清理')
     expect(markdown.find('#markdown-source-text').exists()).toBe(true)
+  })
+
+  it('renders the Text Normalizer route without adding it to the top-level tools', async () => {
+    const normalizer = await mountAt(textNormalizerTool.path)
+
+    expect(normalizer.text()).toContain('文本规范化')
+    expect(normalizer.find('#normalizer-source-text').exists()).toBe(true)
+    expect(tools).not.toContain(textNormalizerTool)
   })
 
   it('renders text compare route and generates a diff result', async () => {

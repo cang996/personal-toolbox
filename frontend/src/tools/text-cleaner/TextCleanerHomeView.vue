@@ -5,6 +5,7 @@ import ToolPageLayout from '@/shared/components/ToolPageLayout.vue'
 
 const pdfCleanerPath = '/tools/text-cleaner/pdf'
 const markdownCleanerPath = '/tools/text-cleaner/markdown'
+const textNormalizerPath = '/tools/text-cleaner/normalizer'
 </script>
 
 <template>
@@ -19,6 +20,11 @@ const markdownCleanerPath = '/tools/text-cleaner/markdown'
         <h2>Markdown 格式清理</h2>
         <p>删除常见 Markdown 标记，保留适合复制到 Word 的文本结构。</p>
       </RouterLink>
+
+      <RouterLink class="cleaner-card" :to="textNormalizerPath">
+        <h2>文本规范化</h2>
+        <p>规范普通文本的空格、中英混排、标点间距和全角字母数字。</p>
+      </RouterLink>
     </div>
   </ToolPageLayout>
 </template>
@@ -26,7 +32,7 @@ const markdownCleanerPath = '/tools/text-cleaner/markdown'
 <style scoped>
 .cleaner-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--space-4);
 }
 
@@ -58,6 +64,12 @@ h2 {
 
 p {
   color: var(--color-text-secondary);
+}
+
+@media (max-width: 900px) {
+  .cleaner-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 680px) {

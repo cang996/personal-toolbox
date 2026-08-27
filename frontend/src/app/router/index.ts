@@ -37,6 +37,11 @@ const router = createRouter({
       component: () => import('@/tools/markdown-text-cleaner/MarkdownTextCleanerView.vue'),
     },
     {
+      path: '/tools/text-cleaner/normalizer',
+      name: 'tool-text-cleaner-normalizer',
+      component: () => import('@/tools/text-normalizer/TextNormalizerView.vue'),
+    },
+    {
       path: '/:pathMatch(.*)*',
       name: 'not-found',
       component: () => import('../views/NotFoundView.vue'),
