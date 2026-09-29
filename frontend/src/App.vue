@@ -87,10 +87,10 @@ onBeforeUnmount(() => {
             <a
               v-if="isHome"
               class="header-action github-link"
-              href="https://github.com/cang996"
+              href="https://github.com/uri996"
               target="_blank"
               rel="noopener noreferrer"
-              aria-label="在新窗口打开 cang996 的 GitHub Profile"
+              aria-label="在新窗口打开 uri996 的 GitHub Profile"
             >
               <span class="header-action-label">GITHUB</span>
               <strong class="header-action-value">

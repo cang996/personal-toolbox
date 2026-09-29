@@ -152,7 +152,7 @@ describe('App', () => {
     expect(githubLink.exists()).toBe(true)
     expect(githubLink.text()).toContain('GITHUB')
     expect(githubLink.text()).toContain('PROFILE ↗')
-    expect(githubLink.attributes('href')).toBe('https://github.com/cang996')
+    expect(githubLink.attributes('href')).toBe('https://github.com/uri996')
     expect(githubLink.attributes('target')).toBe('_blank')
     expect(githubLink.attributes('rel')).toBe('noopener noreferrer')
     expect(githubLink.classes()).toContain('header-action')
