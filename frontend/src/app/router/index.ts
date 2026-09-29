@@ -12,6 +12,11 @@ const router = createRouter({
       component: () => import('../views/HomeView.vue'),
     },
     {
+      path: '/development-log',
+      name: 'development-log',
+      component: () => import('../views/DevelopmentLogView.vue'),
+    },
+    {
       path: textCompareTool.path,
       name: `tool-${textCompareTool.id}`,
       component: () => import('@/tools/text-compare/TextCompareView.vue'),

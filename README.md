@@ -45,3 +45,10 @@ FastAPI process; Vercel routes it to the backend service in deployed environment
 Run backend checks from `backend/` with `python -m pytest tests -v`. Run frontend
 checks from `frontend/` with `npm test`, `npm run lint`, `npm run type-check`, and
 `npm run build`.
+
+## Development Log
+
+The user-facing project history is available at `/development-log`. Its milestone
+content lives in `frontend/src/app/developmentLog.ts`; add future completed,
+user-visible milestones there in newest-first order and keep related fixes or
+polish grouped with the feature they improve.

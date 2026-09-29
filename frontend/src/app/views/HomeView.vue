@@ -101,6 +101,18 @@ function moduleNumber(toolId: string): string {
         </RouterLink>
       </div>
     </section>
+
+    <section class="project-record" aria-labelledby="project-record-heading">
+      <div>
+        <span class="section-code">03 / PROJECT RECORD</span>
+        <h2 id="project-record-heading">项目记录</h2>
+        <p>了解 Personal Toolbox 已完成的主要工具与产品阶段。</p>
+      </div>
+      <RouterLink class="development-log-link" to="/development-log">
+        <span>DEVELOPMENT LOG</span>
+        <strong>开发日志 <span aria-hidden="true">→</span></strong>
+      </RouterLink>
+    </section>
   </div>
 </template>
 
@@ -398,6 +410,58 @@ h3 {
   color: var(--color-accent-active);
 }
 
+.project-record {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-5);
+  border-block: 1px solid var(--color-border-strong);
+  padding: var(--space-4) 0;
+}
+
+.project-record > div {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.project-record h2 {
+  font-size: 1.05rem;
+}
+
+.project-record p {
+  color: var(--color-text-secondary);
+  font-size: 0.86rem;
+}
+
+.development-log-link {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 12rem;
+  border-left: 1px solid var(--color-border-subtle);
+  padding: var(--space-2) var(--space-4);
+  color: var(--color-text-primary);
+  text-decoration: none;
+}
+
+.development-log-link > span {
+  color: var(--color-text-muted);
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: var(--font-size-label);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.development-log-link strong {
+  font-size: var(--font-size-meta);
+  letter-spacing: 0.04em;
+}
+
+.development-log-link:hover,
+.development-log-link:focus-visible {
+  background: var(--color-accent-soft);
+  color: var(--color-accent-active);
+}
+
 @media (max-width: 760px) {
   .last-used {
     grid-template-columns: auto minmax(0, 1fr) auto;
@@ -510,6 +574,18 @@ h3 {
     border-top: 0;
     padding-top: 0;
     white-space: nowrap;
+  }
+
+  .project-record {
+    grid-template-columns: 1fr;
+    gap: var(--space-3);
+  }
+
+  .development-log-link {
+    min-width: 0;
+    border-top: 1px solid var(--color-border-subtle);
+    border-left: 0;
+    padding-inline: 0;
   }
 }
 </style>

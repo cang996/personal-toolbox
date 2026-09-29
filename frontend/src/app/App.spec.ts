@@ -18,6 +18,10 @@ function createTestRouter() {
         component: () => import('./views/HomeView.vue'),
       },
       {
+        path: '/development-log',
+        component: () => import('./views/DevelopmentLogView.vue'),
+      },
+      {
         path: textCompareTool.path,
         component: () => import('@/tools/text-compare/TextCompareView.vue'),
       },
@@ -197,6 +201,27 @@ describe('App', () => {
     expect(wrapper.text()).toContain(textCompareTool.name)
     expect(wrapper.text()).toContain(textCompareTool.description)
     expect(wrapper.find(`a[href="${textCompareTool.path}"]`).exists()).toBe(true)
+  })
+
+  it('links to the Development Log from Home without registering it as a tool', async () => {
+    const home = await mountAt('/')
+    const link = home.find('a.development-log-link')
+
+    expect(link.exists()).toBe(true)
+    expect(link.attributes('href')).toBe('/development-log')
+    expect(link.text()).toContain('开发日志')
+    expect(tools.map((tool) => tool.path)).not.toContain('/development-log')
+  })
+
+  it('mounts the Development Log route and keeps existing routes available', async () => {
+    const developmentLog = await mountAt('/development-log')
+    const home = await mountAt('/')
+    const tool = await mountAt(textCompareTool.path)
+
+    expect(developmentLog.find('h1').text()).toBe('开发日志')
+    expect(developmentLog.text()).toContain('DEVELOPMENT LOG')
+    expect(home.find('.terminal-intro').exists()).toBe(true)
+    expect(tool.findAll('textarea')).toHaveLength(2)
   })
 
   it('renders the text cleaner entry on the home page', async () => {
